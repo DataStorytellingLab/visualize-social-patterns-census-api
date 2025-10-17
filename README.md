@@ -29,7 +29,6 @@ After installation, download the code version of this workflow: [`visualize-soci
 4)	Visualize the relationship between those two variables using a scatterplot built with `ggplot2`. 
 5)	Test the correlation between those variables using `cor.test()`
 6)	Test whether one variable predicts the other using simple linear regression with `lm()` function. 
-<br>
 
 ## Further reading
 Walker, Kyle (2023) _Analyzing US Census Data: Methods, Maps, and Models in R_, CRC Press (open access at https://walker-data.com/census-r/)
