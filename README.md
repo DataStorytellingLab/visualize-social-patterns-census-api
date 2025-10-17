@@ -2,7 +2,6 @@
 
 _Author_: John Lauermann, School of Information, Pratt Institute
 
-
 This repository contains materials for a workshop with the [Data Storytelling Lab](https://github.com/DataStorytellingLab) at Pratt Institute. The workshop covers how to query data from the Census API and then visualize and analyze it using R tools. 
 
 In this workshop, you’ll learn how to visualize and analyze data from the US Census. Census data products are the primary historic record of American society, available as open data for every community in the United States. The long temporal record and diverse geographic scope of these data present opportunities for data storytelling at scale. Census data allow you to tell stories that move beyond small scale case studies, to think about national patterns and historic trends. 
@@ -14,7 +13,6 @@ By the end of the workshop, you should be able to:
 1)	Query American Community Survey data from the Census API. 
 2)	Visualize patterns in the data using choropleth maps and scatterplots.
 3)	Analyze whether those patterns are statistically significant using correlation and simple linear regression. 
-<br>
 
 ## How to set up
 To replicate this workshop, follow the instructions in the markdown version of the notebook: [`visualize-social-patterns-census-api.md`](visualize-social-patterns-census-api.md). The first step it describes is to install R and RStudio on your computer. These are free, open source statistical programming tools. R is the language, and RStudio is a commonly-used code editor that helps you draft code, interact with your data, and create data visualizations. To install, follow this link, which will automatically find the most recent versions of R and RStudio for your operating system. 
