@@ -23,10 +23,10 @@ After installation, download the code version of this workflow: [`visualize-soci
 ## Basic workflow
 1)	Install and load the libraries we’ll need for the workflow. 
 2)	Explore Census data and define a query to pull two variables from the API for further analysis. For this we’ll use `tidycensus` to query the Census API and `dplyr` to clean up the data table.
-3)	Visualize the geographic distribution of each variable using choropleth maps built with ‘ggplot2’.
+3)	Visualize the geographic distribution of each variable using choropleth maps built with `ggplot2`.
 4)	Visualize the relationship between those two variables using a scatterplot built with `ggplot2`. 
 5)	Test the correlation between those variables using `cor.test()`
-6)	Test whether one variable predicts the other using simple linear regression with `lm()` function. 
+6)	Test whether one variable predicts the other using simple linear regression with the `lm()` function.
 
 ## Further reading
 Walker, Kyle (2023) _Analyzing US Census Data: Methods, Maps, and Models in R_, CRC Press (open access at https://walker-data.com/census-r/)
