@@ -29,13 +29,12 @@ After installation, download the code version of this workflow: [`visualize-soci
 6)	Test whether one variable predicts the other using simple linear regression with the `lm()` function.
 
 ## Further reading
-Walker, Kyle (2023) _Analyzing US Census Data: Methods, Maps, and Models in R_, CRC Press (open access at https://walker-data.com/census-r/)
-Walker, Kyle (2025) _tidycensus_ documentation, https://walker-data.com/tidycensus/
-Wickham, Hadley (2025) _ggplot2: Elegant Graphics for Data Analysis_, Springer (open access at https://ggplot2-book.org/preface-3e.html)
+- Walker, Kyle (2023) _Analyzing US Census Data: Methods, Maps, and Models in R_, CRC Press (open access at https://walker-data.com/census-r/)
+- Walker, Kyle (2025) _tidycensus_ documentation, https://walker-data.com/tidycensus/
+- Wickham, Hadley (2025) _ggplot2: Elegant Graphics for Data Analysis_, Springer (open access at https://ggplot2-book.org/preface-3e.html)
 <br>
 <br>
 <br>
-
 Shield: [![CC BY-NC 4.0][cc-by-nc-shield]][cc-by-nc]
 
 This work is licensed under a
