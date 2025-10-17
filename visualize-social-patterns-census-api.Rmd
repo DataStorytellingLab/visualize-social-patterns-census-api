@@ -1,0 +1,453 @@
+---
+title: "Interpreting Social Patterns with Census Data"
+author: "John Lauermann, School of Information, Pratt Institute"
+date: "Last updated: October 2025"
+output: github_document
+---
+
+# Data storytelling context
+
+Census data products are the primary historic record of American society, available as open data for every community in the United States. The long temporal record and diverse geographic scope of these data present opportunities for data storytelling at scale. Census data allow you to tell stories that move beyond small scale case studies, to think about national patterns and historic trends.
+
+In the workflow that follows, I'll the topic of housing affordability. My primary variable of interest is median rent – a key metric for assessing the scope of the housing crisis in American cities. There are two broad schools of thought around why housing is so unenforceable. In this example I'd like to do some data storytelling around these potential story lines.
+
+-   One approach focuses on a lack of [housing supply](https://www.urban.org/projects/road-map-address-americas-housing-crisis). The supply-side approach is common in the [YIMBY movement](https://onlinelibrary.wiley.com/doi/abs/10.1111/1468-2427.13062) and the '[abundance agenda](https://www.simonandschuster.com/books/Abundance/Ezra-Klein/9781668023488)', political movements that argue for deregulating housing development through reforms to zoning and building codes.I'll measure that by assessing new home construction.
+
+-   Another approach focuses on [housing demand](https://journals.sagepub.com/doi/abs/10.1177/0042098020940596). The demand-side argument is common among academic researchers and activist groups that highlight the [uniquely sticky](https://www.nber.org/papers/w22816) nature of housing markets, and [market failures](https://www.jchs.harvard.edu/press-releases/new-report-highlights-unease-housing-market-amid-worsening-affordability-crisis) like a tendency for developers to focus on luxury real estate when most demand is actually for affordable housing. I'll measure this by assessing newcomers within neighborhoods.
+
+These factors are not mutually exclusive: the truth is likely that we need policy solutions focused on **both** supply and demand factors. The goal below is to present a more nuanced picture of the debate, by assessing patterns at scale and using statistical tests to think beyond simply visualizing patterns. The script that follows proceeds in three parts:
+
+1.  Explore and query Census data from the Census API using `tidycensus`
+
+2.  Visualize data patterns using `ggplot2` and a data visualization approach called the "[grammar of graphics](https://www.tandfonline.com/doi/abs/10.1198/jcgs.2009.07098)"
+
+3.  Statistically test data patterns using R tools for correlation and linear regression.
+
+# Initial set up
+
+Download this file from GitHub and then open it in R Studio (`File>Open File`). Choose the Visual view if it doesn't automatically populate.
+
+To run the code, either click the small green "Run Current Chunk" button in the top right of each code chunk, or put your cursor anywhere in the chunk then hit `Cntrl + Shift + Enter` (for a PC) or `Cmd + Shift + Enter` (for a Mac).
+
+We'll start by loading the necessary packages for this workflow. In R, a package is a collection of tools that are used for specific kinds of workflows. The packages are all open source, and you can synthesize as needed within your own code.
+
+```{r}
+# verify whether you need these packages, and install if so
+if (!require(dplyr)) install.packages("dplyr")
+if (!require(ggplot2)) install.packages("ggplot2")
+if (!require(stringr)) install.packages("stringr")
+if (!require(tidycensus)) install.packages("tidycensus")
+```
+
+```{r}
+# now load the libraries
+library(dplyr)      # for managing data tables
+library(ggplot2)    # for data visualization
+library(stringr)    # for filtering string columns
+library(tidycensus) # for using the Census API
+```
+
+# Task 1: Explore and query Census data
+
+The US Census Bureau publishes much of its data via the [Census Data API](https://www.census.gov/data/developers/guidance/api-user-guide.html). If you already know what you are looking for, the API is often a more efficient way to query data than by navigating and downloading from the Census website. That said, you *really* need to understand the structure of Census data in order to use the API. So in this section we'll briefly recap Census products, geographies, and structure of content. Potentially useful ways to explore Census data include:
+
+-   The Census data website, which has an interactive query function: <https://data.census.gov/>
+
+-   The Census API Discovery Tool, which explains the API structure: <https://api.census.gov/data.html>
+
+We'll start by setting up an API call. To get started, you need to obtain a free [Census API key](https://api.census.gov/data/key_signup.html). Save this somewhere secure, and remember not to share it on public platforms (e.g. when you share your code on a portfolio...).
+
+```{r setup, echo=FALSE}
+# set your API key
+census_api_key("your key here")
+```
+
+#### **Data products**
+
+Most of the time, we are interested in the demographic, socioeconomic, housing, and employment data from the Decennial Census and American Community Survey.
+
+The [Decennial Census](https://www.census.gov/programs-surveys/decennial-census.html) has been conducted every decade since 1790. It is the longest and most comprehensive record of American social geography, covering thousands of variables. Like any *census*, it is intended to be a comprehensive count of every person living in the country (though there are well-known issues around enumerating some ["hard-to-count populations"](https://www.census.gov/newsroom/blogs/random-samplings/2023/10/understanding-undercounted-populations.html)).
+
+The [American Community Survey (ACS)](https://www.census.gov/programs-surveys/acs.html) is a companion to the Decennial Census, run every year since 2005. It includes many of the same variables counted in the Census, available on a more regularly updated basis. But like any *survey*, the ACS counts only a small sample of the overall population (typically about 3.5 million households annually, out of \~127 million households nationally). For this reason ACS data are always published in two forms, an *estimate* of the data value and a *margin of error* describing uncertainty about that data value. Furthermore, data are aggregated into different temporal estimates:
+
+-   *ACS 1 year estimates* use data from only the year in question. They are only available for some variables and at course geographic scales.
+
+-   *ACS 3 year estimates* use data from the year in question plus the preceding two years (e.g. a 2021-2023 ACS 3 year estimate is an estimate of 2023 values, based on an average of data from 2021 through 2023). They are available for most variables and some finer geographic scales.
+
+-   *ACS 5 year estimates* use data from the year in question plus the preceding four years (e.g. a 2019-2023 ACS 3 year estimate is an estimate of 2023 values, based on an average of data from 2019 through 2023). They are available for nearly all variables at nearly all geographic scales.
+
+For this exercise, we'll work with data from the ACS 5 year estimates, for the most recent year available. To do that, we'll first pull up a list of all the variables in that data product. Here is a [list of options](https://walker-data.com/tidycensus/articles/basic-usage.html#searching-for-variables) for defining the parameters on that `load_variables()` function.
+
+```{r}
+# query metadata from the api, naming the year and data product
+# parameter options available at https://walker-data.com/tidycensus/articles/basic-usage.html#searching-for-variables 
+variablelist <- load_variables(year= 2023, dataset = "acs5")
+```
+
+You now have a data frame called `variablelist`in your Environment on the top right. You can click on it to open and see the structure of what we downloaded. It will have the census variable code, a variable name, and information on the sampling structure and finest scale at which data are available.
+
+![](images/clipboard-1057856700.png)
+
+#### Querying the API
+
+Once you know the identifier codes for the variable(s) you want, we can configure an API call. Remember that Census/ACS data come packaged in numerous geographic scales, each identified with nesting FIPS codes. See the Census [*Geographic Areas Reference Manual*](https://www2.census.gov/geo/pdfs/reference/GARM/) for all the technical details. There is a different `census` tool for each geography for example:
+
+-   *States*: There are 50 of them, covering the entire US.
+
+-   *Counties*: There are 3007 of them, nested within states.
+
+-   *Tracts*: Each tract is a statistical area home to somewhere between 2500-8000 residents. They describe what the census considers to be a relatively meaningful population area based on demographic, economic, and housing characteristics. Their geographic size is inversely proportional to their population density, so they will be small in cities and larger in rural areas. They are nested within counties, which are nested within states.
+
+-   *Block groups*: Each block group is a subdivision of a tract, home to between 600-3000 people. This is generally the finest scale of aggregation available for ACS data due to survey limitations and data privacy concerns.
+
+```{r}
+# define a list of variables, including more intuitive names
+variables <- c(MedianConRent = "B25058_001",
+               HouseUnits_sum = "B25002_001",
+               HouseUnits_built2020orlater = "B25034_002",
+               HouseUnits_built2010to2019 = "B25034_003",
+               OccupiedHouseUnits_sum = "B25038_001",
+               Owner_MovedIn_after2021 = "B25038_003",
+               Owner_MovedIn_2018to2020 = "B25038_004",
+               Owner_MovedIn_2010to2017 = "B25038_005",
+               Renter_MovedIn_after2021 = "B25038_010",
+               Renter_MovedIn_2018to2020 = "B25038_011",
+               Renter_MovedIn_2010to2017 = "B25038_012"
+               )
+```
+
+```{r}
+# set up an API query
+data <- get_acs(geography = "county",    # all counties in the US
+                variables = variables,   # all variables defined in the list above
+                output = "wide",         # row = observation, column = variable
+                year = 2023,             # most recent year
+                geometry = TRUE          # include spatial boundary data
+                )             
+
+# see the total rows and columns of the data
+dim(data)
+
+#list the column names
+ls(data)
+```
+
+You now have a data frame called `data` in your Environment. You can open it to see the structure of what we downloaded. Note that ACS data publishes both estimated values (variables will include 'E' in the column name) and margins of error on those estimates (will include 'M' in the column name).
+
+![](images/clipboard-4198662103.png)
+
+Finally, we need to do a bit of data processing to get the data into a shape that will allow further visualization and analysis.
+
+```{r}
+# use dplyr tools to clean the data
+data <- data %>%
+  rename_with(~ gsub("E$", "", .x), .cols = everything()) %>%
+  mutate(NewHomes_sum =  HouseUnits_built2010to2019 + HouseUnits_built2020orlater,
+         NewHomes_pct =  NewHomes_sum / HouseUnits_sum * 100,
+         NewComers_sum = Owner_MovedIn_after2021 + Owner_MovedIn_2018to2020 + 
+           Owner_MovedIn_2010to2017+ Renter_MovedIn_after2021 +
+           Renter_MovedIn_2018to2020 + Renter_MovedIn_2010to2017,
+         NewComers_pct = NewComers_sum / OccupiedHouseUnits_sum * 100)
+```
+
+```{r}
+# now we'll calculate some descriptive statistics just to verify it worked
+mean(na.omit(data$MedianConRent))
+mean(data$NewHomes_pct)
+mean(data$NewComers_pct)
+```
+
+# Part 2: Visualize data patterns
+
+To visualize the data, we'll use a library called `ggplot2`. It is based on s based on a statistical visualization concept called the "[grammar of graphics](https://www.tandfonline.com/doi/abs/10.1198/jcgs.2009.07098)" (hence the 'gg' applied to a 'plot'). This approach is basically a layering structure, in which you first define a plot space and then add on additional layers of information.
+
+You build graphics by adding these layers, with a + for each additional layer:
+
+-   **ggplot**() defines the plot layer itself, based on the data you want to use
+
+-   **aes** defines the aesthetic mapping of a layer, based your desired x and y variables
+
+-   **geom** adds geometric layers onto the plot, from a library of potential data viz types
+
+-   **stat** functions calculate derivative numbers for use in a graphic
+
+-   **position** adjustments change how layers are ordered or rendered
+
+-   **coordinate** functions would alter how the points are displayed (e.g. changing the projection of a map)
+
+-   **facet** functions define how multiple charts are arranged on the ggplot layer
+
+-   **theme** borrows from a library of existing themes to style the graphic
+
+#### Choropleth maps
+
+We'll start by mapping the geographic pattern of our variables. This will identify regions of high/low values in each of the variables. To do this, we'll create a set of [choropleth maps](https://www.axismaps.com/guide/choropleth). This is a common data viz type that uses the color of map objects to visualize their data values.
+
+```{r}
+# first we'll drop Alaska, Hawaii, and overseas territories to focus on only the lower 48 states
+
+## FIPS codes to exclude
+exclude_list <- c("02", "15", "60", "66", "69", "72", "78")
+
+# filter the data
+lower48 <- data %>%
+  filter(!str_sub(GEOID, 1, 2) %in% exclude_list)
+```
+
+```{r}
+# now map median rent
+ggplot(data = lower48) +  # defines the data space
+  geom_sf(aes(fill = MedianConRent), color = NA) +  # viz type = map
+  coord_sf(crs = "ESRI:102010") +   # a relevant map projection for the region
+  scale_fill_distiller(palette = "Reds", # define color fill
+                       direction = 1,  # ramp from light to dark
+                       name = "Rent ($)"  # label the legend
+                       ) +  
+  labs(          
+    title = "Median Contract Rent by County, 2023", # add text
+    caption = "Source: ACS 5 Year Estimates"
+  ) + 
+  theme_minimal()  # choose a theme
+  
+```
+
+```{r}
+# now map new homes
+ggplot(data = lower48) + 
+  geom_sf(aes(fill = NewHomes_pct), color = NA) +  # Changed the variable
+  coord_sf(crs = "ESRI:102010") +   
+  scale_fill_distiller(palette = "Greens", 
+                       direction = 1, 
+                       name = "% of Total House Units") +  
+  labs(
+    title = "Supply Factors",
+    subtitle = "New construction as a share of housing market, 2010-2023",
+    caption = "Source: ACS 5 Year Estimates"  
+  ) + 
+  theme_minimal()  
+```
+
+```{r}
+# and map newcomers rates
+ggplot(data = lower48) +  
+  geom_sf(aes(fill = NewComers_pct), color = NA) +  
+  coord_sf(crs = "ESRI:102010") +   #
+  scale_fill_distiller(palette = "Purples", 
+                       direction = 1, 
+                       name = "% of Occupied House Units") + 
+  labs(
+    title = "Demand Factors",
+    subtitle = "Residents who recently moved into their home, 2010-2023",
+    caption = "Source: ACS 5 Year Estimates" 
+  ) + 
+  theme_minimal()  
+```
+
+#### Scatterplot
+
+Visually evaluating the maps, it looks like there might be some association between the two variables. But other kinds of data visualizations may be more effective for understanding any potential pattern. We'll create a scatterplot, a visualization technique that plots one variable against the other, so you can see the overall pattern.
+
+```{r}
+# create a scatterplot for new housing
+ggplot(data = data,   # define the data space
+       aes(x = NewHomes_pct,  # x variable
+           y = MedianConRent, # y variable
+           size = HouseUnits_sum)) +   # size dots by total population, for context
+  geom_point(color = "green", # color as name or RBG vector
+             alpha = .5) +  # transparency
+   scale_size_continuous(labels = scales::comma) +
+  labs(
+    title = "Does new construction relate to median rent?", 
+    y = "Median Contract Rent ($)", 
+    x = "New Homes (% of All Units)", 
+    size = "Total Housing Units"
+  )
+```
+
+```{r}
+# create a scatterplot for recent movers
+ggplot(data = data,   # define the data space
+       aes(x = NewComers_pct,  # x variable
+           y = MedianConRent, # y variable
+           size = OccupiedHouseUnits_sum)) +  
+  geom_point(color = "purple", # color as name or RBG vector
+             alpha = .5) +  # transparency
+   scale_size_continuous(labels = scales::comma) +
+  labs(
+    title = "Does migration relate to median rent?", 
+    y = "Median Contract Rent ($)", 
+    x = "Recently Moved In (%)", 
+    size = "Occupied Housing Units"
+  )
+```
+
+On these plots, each dot represents a county. The dots' position represent their values of the x and y variable. The size of each dot represents the total 'population' in each county (in this case, based on housing units rather than people). This size parameter is included simply for context, since very populous cities presumably have different kinds of housing dynamics than rural areas.
+
+The point cloud tells us very useful information about the relationship between the two variables. Specifically, we can tell stories about:
+
+1.  The relative **trend in the cloud**. Trending upward (from bottom left to top right) indicates a positive relationship. Trending downward indicates a negative relationship.
+
+2.  The relative **dispersion of the cloud**. A tightly clustered cloud indicates a strong association between variables. A randomly distributed cloud indicates a weak association.
+
+# Part 3: Statistically test data patterns
+
+While visualization is useful, it only *describes* a visual pattern. For data storytelling to be persuasive, however, we need to present evidence that analyzes the pattern and evaluates uncertainty around the analysis. We'll address this with two related tests: correlation and linear regression.
+
+#### Correlation
+
+Correlation tests assess whether the variables are associated with each other. The null hypothesis is that the variables are not associated. The alternative hypothesis is that they are.
+
+For data with our variables' structure, we'll use a test called [Pearson's r correlation coefficient](https://statsthinking21.github.io/statsthinking21-core-site/ci-effect-size-power.html#pearsons-r). It will generate a correlation coefficient that ranges from -1 to 1.
+
+-   0 indicates no correlation.
+
+-   The directionality of the coefficient indicates whether the correlation is positive or negative (the direction the point cloud slopes toward).
+
+-   The relative magnitude of the coefficient indicates the strength of correlation (the relative compactness or dispersion of the point cloud).
+
+```{r}
+# a basic correlation test for new constructoin
+cor(x = data$NewHomes_pct, 
+    y = data$MedianConRent, 
+    method = "pearson", 
+    use = "complete.obs")
+```
+
+```{r}
+# a basic correlation test for vacancy
+cor(x = data$NewComers_pct, 
+    y = data$MedianConRent, 
+    method = "pearson", 
+    use = "complete.obs")
+```
+
+But we also need to understand whether the Pearson's r value is statistically 'significant'. To that, we'll run a test that generate a series of extra metrics including:
+
+-   a t-test, which tests whether R is 0 or not 0. Larger values indicate that R is more likely to be not 0.
+
+-   p-value for that t-test, which gives a level of statistical confidence (e.g.,"x is correlated with y, at the 99% level of confidence")
+
+-   a confidence interval, stating that we are certain the actual value of R is between these values at a given level of confidence (e.g., "we are 95% certain the true value of R is between \_\_ and \_\_")
+
+```{r}
+# full test metrics for new construction
+cor.test(x = data$NewHomes_pct, 
+         y = data$MedianConRent, 
+         method = "pearson", 
+         use = "complete.obs")
+```
+
+```{r}
+# full test metrics for recent movers
+cor.test(x = data$NewComers_pct, 
+         y = data$MedianConRent, 
+         method = "pearson", 
+         use = "complete.obs")
+```
+
+Based on these tests, we can say that:
+
+-   Variables are positively correlated to median rent since the coefficients are positive.
+
+-   The recent movers correlation is more strongly correlated because its coefficient is larger than that for new construction.
+
+-   We are confident the variables are correlated with a 99.9% level of significance based on the p-value.
+
+-   We are 95% confident that the actual correlation is somewhere between the first and second values presented in those lines on the summary.
+
+#### Simple linear regression
+
+A correlation test will tell us that two variables are associated. But, famously, *correlation does not equal causation* (for some hilarious illustrations of this point, see Tyler Vigin's [*Spurious Correlations*](https://www.tylervigen.com/spurious-correlations) blog).
+
+To get closer to measuring causal patterns, we can use regression models to ask if one variable *predicts* the behavior of the other variable. The basic version of this is 'simple' [linear regression](https://statsthinking21.github.io/statsthinking21-core-site/fitting-models.html), which fits a line through the point cloud of your scatterplot in the most efficient manner possible.
+
+The model is a simple algebraic line:
+
+y = 𝛂 + 𝛃(x)
+
+where:
+
+-   y is the predicted value of y,
+
+-   𝛂 is the intercept of the line. It can be interpreted as the value we would expect to see for y if x is 0.
+
+-   𝛃 is the slope of the line. It can be interpreted as how we predict y to change if x increased by one unit.
+
+-   
+
+```{r}
+# define a regression model for new construction
+lm(formula = MedianConRent ~ NewHomes_sum, data = data)
+
+# define a regression model for recent movers
+lm(formula = MedianConRent ~ NewComers_sum, data = data)
+```
+
+We also want to evaluate the overall performance of the models. This will give us some additional metrics including:
+
+-   whether the beta coefficient is statistically significant, and at what level (the t value and p value next to the coefficient estimates)
+
+-   the R-squared, which measures the proportion of the behavior of y that is explained by the model
+
+```{r}
+# save the model for new construction
+supply_model <- lm(formula = MedianConRent ~ NewHomes_pct, data = data)
+
+# view the results
+summary(supply_model)
+```
+
+```{r}
+# save the model for recent movers
+demand_model <- lm(formula = MedianConRent ~ NewComers_pct, data = data)
+
+# view the results
+summary(demand_model)
+```
+
+#### Visualize the model
+
+Finally, we'll add these model lines to the scatterplots we created before to visualize the overall trend. The `geom_smooth` layer will add a line using the same `y ~ x` formula we used above. It will also add a visualization of the confidence interval, which you can specify using a level parameter.
+
+```{r}
+# add model for new housing
+ggplot(data = data,   
+       aes(x = NewHomes_pct, y = MedianConRent)) +  
+  geom_point(color = "green", alpha = .5) +  
+  geom_smooth(method = "lm",  # use y ~ x
+              level = 0.95,   # confidence interval around the line
+              color = "red"
+              ) +
+  scale_size_continuous(labels = scales::comma) +
+  labs(
+    title = "Does new construction relate to median rent?", 
+    y = "Median Contract Rent ($)", 
+    x = "New Homes as percent of market", 
+    size = "Total Housing Units"
+  )
+```
+
+```{r}
+# create a scatterplot for recent movers
+ggplot(data = data, aes(x = NewComers_pct, y = MedianConRent)) +  
+  geom_point(color = "purple", alpha = .5) +  
+  geom_smooth(method = "lm",  # use y ~ x
+              level = 0.95,   # confidence interval around the line
+              color = "orange"
+              ) +
+  scale_size_continuous(labels = scales::comma) +
+  labs(
+    title = "Does migration relate to median rent?", 
+    y = "Median Contract Rent ($)", 
+    x = "Recently Moved In (%)", 
+    size = "Total Housing Units"
+  )
+```
+
+# Conclusion
+
+To sum up, then, we found evidence that:
+
+1)  Housing supply is positively associated with median rent. This suggests that developers are building in pricier markets – which could be great! But, the evidence at hand is not sufficient to show whether that new construction is alleviating median rent costs.
+
+2)  Housing demand is also positively associated with median rent, and has a stronger relationship to it than the supply factor we tested. This suggests that demand factors are important too, so policy makers should be careful to not only focus on increasing housing supply.
