@@ -1,7 +1,7 @@
 # Visualize social patterns with the Census API
 Author: John Lauermann, School of Information, Pratt Institute
 
-This repostitory contains materials for a workshop with the [Data Storytelling Lab](https://github.com/DataStorytellingLab) at Pratt Institute. The workshop covers how to query data from the Census API and then visualize and analyze it using R tools. 
+This repository contains materials for a workshop with the [Data Storytelling Lab](https://github.com/DataStorytellingLab) at Pratt Institute. The workshop covers how to query data from the Census API and then visualize and analyze it using R tools. 
 
 In this workshop, you’ll learn how to visualize and analyze data from the US Census. Census data products are the primary historic record of American society, available as open data for every community in the United States. The long temporal record and diverse geographic scope of these data present opportunities for data storytelling at scale. Census data allow you to tell stories that move beyond small scale case studies, to think about national patterns and historic trends. 
 To work with this kind of big data, we’ll use open source statistical tools in R to analyze and visualize geographic patterns. 
