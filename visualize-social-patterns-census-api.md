@@ -771,7 +771,6 @@ ggplot(data = data,
               level = 0.95,   # confidence interval around the line
               color = "red"
               ) +
-  scale_size_continuous(labels = scales::comma) +
   labs(
     title = "Does new construction relate to median rent?", 
     y = "Median Contract Rent ($)", 
@@ -800,7 +799,6 @@ ggplot(data = data, aes(x = NewComers_pct, y = MedianConRent)) +
               level = 0.95,   # confidence interval around the line
               color = "orange"
               ) +
-  scale_size_continuous(labels = scales::comma) +
   labs(
     title = "Does migration relate to median rent?", 
     y = "Median Contract Rent ($)", 
