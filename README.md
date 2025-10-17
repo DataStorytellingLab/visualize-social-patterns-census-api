@@ -35,6 +35,7 @@ After installation, download the code version of this workflow: [`visualize-soci
 <br>
 <br>
 <br>
+
 Shield: [![CC BY-NC 4.0][cc-by-nc-shield]][cc-by-nc]
 
 This work is licensed under a
