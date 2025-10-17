@@ -1,4 +1,4 @@
-# Visualize social patterns with the Census API
+# Interpeting social patterns with Census data
 Author: John Lauermann, School of Information, Pratt Institute
 
 This repository contains materials for a workshop with the [Data Storytelling Lab](https://github.com/DataStorytellingLab) at Pratt Institute. The workshop covers how to query data from the Census API and then visualize and analyze it using R tools. 
