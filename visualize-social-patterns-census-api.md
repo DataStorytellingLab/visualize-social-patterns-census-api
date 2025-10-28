@@ -3,7 +3,7 @@ Interpreting Social Patterns with Census Data
 John Lauermann, School of Information, Pratt Institute
 Last updated: October 2025
 
-# Data storytelling context
+# Overview
 
 Census data products are the primary historic record of American
 society, available as open data for every community in the United
@@ -12,10 +12,25 @@ data present opportunities for data storytelling at scale. Census data
 allow you to tell stories that move beyond small scale case studies, to
 think about national patterns and historic trends.
 
+In this workshop, you’ll learn how to visualize and analyze Census data
+in ways that could support data storytelling. The script that follows
+proceeds in three parts:
+
+1.  Explore and query Census data from the Census API using `tidycensus`
+
+2.  Visualize data patterns using `ggplot2` and a data visualization
+    approach called the “[grammar of
+    graphics](https://www.tandfonline.com/doi/abs/10.1198/jcgs.2009.07098)”
+
+3.  Statistically test data patterns using R tools for correlation and
+    simple linear regression.
+
+#### Data storytelling context
+
 In the workflow that follows, I’ll the topic of housing affordability.
 My primary variable of interest is median rent – a key metric for
 assessing the scope of the housing crisis in American cities. There are
-two broad schools of thought around why housing is so unenforceable. In
+two broad schools of thought around why housing is so unaffordable. In
 this example I’d like to do some data storytelling around these
 potential story lines.
 
@@ -26,7 +41,7 @@ potential story lines.
   and the ‘[abundance
   agenda](https://www.simonandschuster.com/books/Abundance/Ezra-Klein/9781668023488)’,
   political movements that argue for deregulating housing development
-  through reforms to zoning and building codes.I’ll measure that by
+  through reforms to zoning and building codes. I’ll measure that by
   assessing new home construction.
 
 - Another approach focuses on [housing
@@ -44,19 +59,9 @@ These factors are not mutually exclusive: the truth is likely that we
 need policy solutions focused on **both** supply and demand factors. The
 goal below is to present a more nuanced picture of the debate, by
 assessing patterns at scale and using statistical tests to think beyond
-simply visualizing patterns. The script that follows proceeds in three
-parts:
+simply visualizing patterns.
 
-1.  Explore and query Census data from the Census API using `tidycensus`
-
-2.  Visualize data patterns using `ggplot2` and a data visualization
-    approach called the “[grammar of
-    graphics](https://www.tandfonline.com/doi/abs/10.1198/jcgs.2009.07098)”
-
-3.  Statistically test data patterns using R tools for correlation and
-    linear regression.
-
-# Initial set up
+#### Getting started
 
 Download this file from GitHub and then open it in R Studio
 (`File>Open File`). Choose the Visual view if it doesn’t automatically
@@ -126,12 +131,13 @@ library(tidycensus) # for using the Census API
 
 The US Census Bureau publishes much of its data via the [Census Data
 API](https://www.census.gov/data/developers/guidance/api-user-guide.html).
-If you already know what you are looking for, the API is often a more
+If you already know what you’re looking for, the API is often a more
 efficient way to query data than by navigating and downloading from the
-Census website. That said, you *really* need to understand the structure
-of Census data in order to use the API. So in this section we’ll briefly
-recap Census products, geographies, and structure of content.
-Potentially useful ways to explore Census data include:
+general [Census website](https://data.census.gov/). That said, you
+*really* have to understand the structure of Census data in order to use
+the API. So in this section we’ll briefly recap Census products,
+geographies, and structure of content. Potentially useful ways to
+explore Census data include:
 
 - The Census data website, which has an interactive query function:
   <https://data.census.gov/>
@@ -156,7 +162,7 @@ Community Survey.
 The [Decennial
 Census](https://www.census.gov/programs-surveys/decennial-census.html)
 has been conducted every decade since 1790. It is the longest and most
-comprehensive record of American social geography, covering thousands of
+comprehensive record of American society, covering thousands of
 variables. Like any *census*, it is intended to be a comprehensive count
 of every person living in the country (though there are well-known
 issues around enumerating some [“hard-to-count
@@ -171,7 +177,7 @@ of the overall population (typically about 3.5 million households
 annually, out of ~127 million households nationally). For this reason
 ACS data are always published in two forms, an *estimate* of the data
 value and a *margin of error* describing uncertainty about that data
-value. Furthermore, data are aggregated into different temporal
+value. Furthermore, ACS data are aggregated into different temporal
 estimates:
 
 - *ACS 1 year estimates* use data from only the year in question. They
@@ -201,11 +207,11 @@ for defining the parameters on that `load_variables()` function.
 variablelist <- load_variables(year= 2023, dataset = "acs5")
 ```
 
-You now have a data frame called `variablelist`in your Environment on
-the top right. You can click on it to open and see the structure of what
-we downloaded. It will have the census variable code, a variable name,
-and information on the sampling structure and finest scale at which data
-are available.
+You now have a data frame called `variablelist` under the Environment
+tab on the top right of your screen. You can click on it to open and see
+the structure of what we downloaded. This will list each census variable
+code, a variable name, and information on the sampling structure and
+finest scale at which data are available.
 
 ![](images/clipboard-1057856700.png)
 
@@ -213,11 +219,7 @@ are available.
 
 Once you know the identifier codes for the variable(s) you want, we can
 configure an API call. Remember that Census/ACS data come packaged in
-numerous geographic scales, each identified with nesting FIPS codes. See
-the Census [*Geographic Areas Reference
-Manual*](https://www2.census.gov/geo/pdfs/reference/GARM/) for all the
-technical details. There is a different `census` tool for each geography
-for example:
+numerous geographic scales, each identified with nesting FIPS codes.
 
 - *States*: There are 50 of them, covering the entire US.
 
@@ -235,6 +237,12 @@ for example:
   between 600-3000 people. This is generally the finest scale of
   aggregation available for ACS data due to survey limitations and data
   privacy concerns.
+
+Here is a list of [geography
+options](https://walker-data.com/tidycensus/articles/basic-usage.html#geography-in-tidycensus)
+for the `tidycensus` library. See also the Census [*Geographic Areas
+Reference Manual*](https://www2.census.gov/geo/pdfs/reference/GARM/) for
+all the technical details.
 
 ``` r
 # define a list of variables, including more intuitive names
@@ -258,7 +266,7 @@ data <- get_acs(geography = "county",    # all counties in the US
                 variables = variables,   # all variables defined in the list above
                 output = "wide",         # row = observation, column = variable
                 year = 2023,             # most recent year
-                geometry = TRUE          # include spatial boundary data
+                geometry = TRUE         # include spatial boundary data   
                 )             
 ```
 
@@ -267,6 +275,12 @@ data <- get_acs(geography = "county",    # all counties in the US
     ## Downloading feature geometry from the Census website.  To cache shapefiles for use in future sessions, set `options(tigris_use_cache = TRUE)`.
 
     ##   |                                                                              |                                                                      |   0%  |                                                                              |                                                                      |   1%  |                                                                              |=                                                                     |   1%  |                                                                              |=                                                                     |   2%  |                                                                              |==                                                                    |   2%  |                                                                              |==                                                                    |   3%  |                                                                              |==                                                                    |   4%  |                                                                              |===                                                                   |   4%  |                                                                              |===                                                                   |   5%  |                                                                              |====                                                                  |   5%  |                                                                              |====                                                                  |   6%  |                                                                              |=====                                                                 |   6%  |                                                                              |=====                                                                 |   7%  |                                                                              |=====                                                                 |   8%  |                                                                              |======                                                                |   8%  |                                                                              |======                                                                |   9%  |                                                                              |=======                                                               |   9%  |                                                                              |=======                                                               |  10%  |                                                                              |=======                                                               |  11%  |                                                                              |========                                                              |  11%  |                                                                              |========                                                              |  12%  |                                                                              |=========                                                             |  12%  |                                                                              |=========                                                             |  13%  |                                                                              |=========                                                             |  14%  |                                                                              |==========                                                            |  14%  |                                                                              |==========                                                            |  15%  |                                                                              |===========                                                           |  15%  |                                                                              |===========                                                           |  16%  |                                                                              |============                                                          |  16%  |                                                                              |============                                                          |  17%  |                                                                              |============                                                          |  18%  |                                                                              |=============                                                         |  18%  |                                                                              |=============                                                         |  19%  |                                                                              |==============                                                        |  19%  |                                                                              |==============                                                        |  20%  |                                                                              |==============                                                        |  21%  |                                                                              |===============                                                       |  21%  |                                                                              |===============                                                       |  22%  |                                                                              |================                                                      |  22%  |                                                                              |================                                                      |  23%  |                                                                              |================                                                      |  24%  |                                                                              |=================                                                     |  24%  |                                                                              |=================                                                     |  25%  |                                                                              |==================                                                    |  25%  |                                                                              |==================                                                    |  26%  |                                                                              |===================                                                   |  26%  |                                                                              |===================                                                   |  27%  |                                                                              |===================                                                   |  28%  |                                                                              |====================                                                  |  28%  |                                                                              |====================                                                  |  29%  |                                                                              |=====================                                                 |  29%  |                                                                              |=====================                                                 |  30%  |                                                                              |=====================                                                 |  31%  |                                                                              |======================                                                |  31%  |                                                                              |======================                                                |  32%  |                                                                              |=======================                                               |  32%  |                                                                              |=======================                                               |  33%  |                                                                              |=======================                                               |  34%  |                                                                              |========================                                              |  34%  |                                                                              |========================                                              |  35%  |                                                                              |=========================                                             |  35%  |                                                                              |=========================                                             |  36%  |                                                                              |==========================                                            |  36%  |                                                                              |==========================                                            |  37%  |                                                                              |==========================                                            |  38%  |                                                                              |===========================                                           |  38%  |                                                                              |===========================                                           |  39%  |                                                                              |============================                                          |  39%  |                                                                              |============================                                          |  40%  |                                                                              |============================                                          |  41%  |                                                                              |=============================                                         |  41%  |                                                                              |=============================                                         |  42%  |                                                                              |==============================                                        |  42%  |                                                                              |==============================                                        |  43%  |                                                                              |==============================                                        |  44%  |                                                                              |===============================                                       |  44%  |                                                                              |===============================                                       |  45%  |                                                                              |================================                                      |  45%  |                                                                              |================================                                      |  46%  |                                                                              |=================================                                     |  46%  |                                                                              |=================================                                     |  47%  |                                                                              |=================================                                     |  48%  |                                                                              |==================================                                    |  48%  |                                                                              |==================================                                    |  49%  |                                                                              |===================================                                   |  49%  |                                                                              |===================================                                   |  50%  |                                                                              |===================================                                   |  51%  |                                                                              |====================================                                  |  51%  |                                                                              |====================================                                  |  52%  |                                                                              |=====================================                                 |  52%  |                                                                              |=====================================                                 |  53%  |                                                                              |=====================================                                 |  54%  |                                                                              |======================================                                |  54%  |                                                                              |======================================                                |  55%  |                                                                              |=======================================                               |  55%  |                                                                              |=======================================                               |  56%  |                                                                              |========================================                              |  56%  |                                                                              |========================================                              |  57%  |                                                                              |========================================                              |  58%  |                                                                              |=========================================                             |  58%  |                                                                              |=========================================                             |  59%  |                                                                              |==========================================                            |  59%  |                                                                              |==========================================                            |  60%  |                                                                              |==========================================                            |  61%  |                                                                              |===========================================                           |  61%  |                                                                              |===========================================                           |  62%  |                                                                              |============================================                          |  62%  |                                                                              |============================================                          |  63%  |                                                                              |============================================                          |  64%  |                                                                              |=============================================                         |  64%  |                                                                              |=============================================                         |  65%  |                                                                              |==============================================                        |  65%  |                                                                              |==============================================                        |  66%  |                                                                              |===============================================                       |  66%  |                                                                              |===============================================                       |  67%  |                                                                              |===============================================                       |  68%  |                                                                              |================================================                      |  68%  |                                                                              |================================================                      |  69%  |                                                                              |=================================================                     |  69%  |                                                                              |=================================================                     |  70%  |                                                                              |=================================================                     |  71%  |                                                                              |==================================================                    |  71%  |                                                                              |==================================================                    |  72%  |                                                                              |===================================================                   |  72%  |                                                                              |===================================================                   |  73%  |                                                                              |===================================================                   |  74%  |                                                                              |====================================================                  |  74%  |                                                                              |====================================================                  |  75%  |                                                                              |=====================================================                 |  75%  |                                                                              |=====================================================                 |  76%  |                                                                              |======================================================                |  76%  |                                                                              |======================================================                |  77%  |                                                                              |======================================================                |  78%  |                                                                              |=======================================================               |  78%  |                                                                              |=======================================================               |  79%  |                                                                              |========================================================              |  79%  |                                                                              |========================================================              |  80%  |                                                                              |========================================================              |  81%  |                                                                              |=========================================================             |  81%  |                                                                              |=========================================================             |  82%  |                                                                              |==========================================================            |  82%  |                                                                              |==========================================================            |  83%  |                                                                              |==========================================================            |  84%  |                                                                              |===========================================================           |  84%  |                                                                              |===========================================================           |  85%  |                                                                              |============================================================          |  85%  |                                                                              |============================================================          |  86%  |                                                                              |=============================================================         |  86%  |                                                                              |=============================================================         |  87%  |                                                                              |=============================================================         |  88%  |                                                                              |==============================================================        |  88%  |                                                                              |==============================================================        |  89%  |                                                                              |===============================================================       |  89%  |                                                                              |===============================================================       |  90%  |                                                                              |===============================================================       |  91%  |                                                                              |================================================================      |  91%  |                                                                              |================================================================      |  92%  |                                                                              |=================================================================     |  92%  |                                                                              |=================================================================     |  93%  |                                                                              |=================================================================     |  94%  |                                                                              |==================================================================    |  94%  |                                                                              |==================================================================    |  95%  |                                                                              |===================================================================   |  95%  |                                                                              |===================================================================   |  96%  |                                                                              |====================================================================  |  96%  |                                                                              |====================================================================  |  97%  |                                                                              |====================================================================  |  98%  |                                                                              |===================================================================== |  98%  |                                                                              |===================================================================== |  99%  |                                                                              |======================================================================|  99%  |                                                                              |======================================================================| 100%
+
+You now have a data frame called `data` in your Environment. You can
+open it to see the structure of what we downloaded. Note that ACS data
+publishes both estimated values (variables will include ‘E’ at the end
+of the column name) and margins of error on those estimates (will
+include ‘M’ at the end of the column name).
 
 ``` r
 # see the total rows and columns of the data
@@ -293,14 +307,6 @@ ls(data)
     ## [21] "Renter_MovedIn_2010to2017M"   "Renter_MovedIn_2018to2020E"  
     ## [23] "Renter_MovedIn_2018to2020M"   "Renter_MovedIn_after2021E"   
     ## [25] "Renter_MovedIn_after2021M"
-
-You now have a data frame called `data` in your Environment. You can
-open it to see the structure of what we downloaded. Note that ACS data
-publishes both estimated values (variables will include ‘E’ in the
-column name) and margins of error on those estimates (will include ‘M’
-in the column name).
-
-![](images/clipboard-4198662103.png)
 
 Finally, we need to do a bit of data processing to get the data into a
 shape that will allow further visualization and analysis.
@@ -339,10 +345,9 @@ mean(data$NewComers_pct)
 # Part 2: Visualize data patterns
 
 To visualize the data, we’ll use a library called `ggplot2`. It is based
-on s based on a statistical visualization concept called the “[grammar
-of
+on a statistical visualization concept called “[grammar of
 graphics](https://www.tandfonline.com/doi/abs/10.1198/jcgs.2009.07098)”
-(hence the ‘gg’ applied to a ‘plot’). This approach is basically a
+(hence the ‘gg’ applied to a ‘plot’). The grammar of graphics is a
 layering structure, in which you first define a plot space and then add
 on additional layers of information.
 
@@ -352,8 +357,8 @@ layer:
 - **ggplot**() defines the plot layer itself, based on the data you want
   to use
 
-- **aes** defines the aesthetic mapping of a layer, based your desired x
-  and y variables
+- **aes** defines the aesthetic mapping of a layer, connecting variables
+  to elements of the plot
 
 - **geom** adds geometric layers onto the plot, from a library of
   potential data viz types
@@ -362,14 +367,14 @@ layer:
 
 - **position** adjustments change how layers are ordered or rendered
 
-- **coordinate** functions would alter how the points are displayed
+- **coordinate** functions alter how the points are displayed
   (e.g. changing the projection of a map)
 
-- **facet** functions define how multiple charts are arranged on the
-  ggplot layer
+- **facet** functions allow you to arrange multiple charts together
 
-- **theme** borrows from a library of existing themes to style the
-  graphic
+- **theme** borrows from a [library of
+  themes](https://ggplot2.tidyverse.org/reference/ggtheme.html) to style
+  the graphic
 
 #### Choropleth maps
 
@@ -381,8 +386,7 @@ viz type that uses the color of map objects to visualize their data
 values.
 
 ``` r
-# first we'll drop Alaska, Hawaii, and overseas territories to focus on only the lower 48 states
-
+# first we'll drop Alaska, Hawaii, and overseas territories to map only the lower 48 states
 ## FIPS codes to exclude
 exclude_list <- c("02", "15", "60", "66", "69", "72", "78")
 
@@ -393,7 +397,7 @@ lower48 <- data %>%
 
 ``` r
 # now map median rent
-ggplot(data = lower48) +  # defines the data space
+ggplot(data = lower48) +  # defines the plot space
   geom_sf(aes(fill = MedianConRent), color = NA) +  # viz type = map
   coord_sf(crs = "ESRI:102010") +   # a relevant map projection for the region
   scale_fill_distiller(palette = "Reds", # define color fill
@@ -407,10 +411,10 @@ ggplot(data = lower48) +  # defines the data space
   theme_minimal()  # choose a theme
 ```
 
-![](visualize-social-patterns-census-api_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+![](visualize-social-patterns-census-api_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
 
 ``` r
-# now map new homes
+# now map new home construction
 ggplot(data = lower48) + 
   geom_sf(aes(fill = NewHomes_pct), color = NA) +  # Changed the variable
   coord_sf(crs = "ESRI:102010") +   
@@ -425,7 +429,7 @@ ggplot(data = lower48) +
   theme_minimal()  
 ```
 
-![](visualize-social-patterns-census-api_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
+![](visualize-social-patterns-census-api_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
 
 ``` r
 # and map newcomers rates
@@ -443,7 +447,7 @@ ggplot(data = lower48) +
   theme_minimal()  
 ```
 
-![](visualize-social-patterns-census-api_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
+![](visualize-social-patterns-census-api_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
 
 #### Scatterplot
 
@@ -474,7 +478,7 @@ ggplot(data = data,   # define the data space
     ## Warning: Removed 15 rows containing missing values or values outside the scale range
     ## (`geom_point()`).
 
-![](visualize-social-patterns-census-api_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
+![](visualize-social-patterns-census-api_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
 
 ``` r
 # create a scatterplot for recent movers
@@ -496,13 +500,13 @@ ggplot(data = data,   # define the data space
     ## Warning: Removed 15 rows containing missing values or values outside the scale range
     ## (`geom_point()`).
 
-![](visualize-social-patterns-census-api_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
+![](visualize-social-patterns-census-api_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
 
 On these plots, each dot represents a county. The dots’ position
-represent their values of the x and y variable. The size of each dot
+represent their values of the x and y variables. The size of each dot
 represents the total ‘population’ in each county (in this case, based on
 housing units rather than people). This size parameter is included
-simply for context, since very populous cities presumably have different
+simply for context, since populous cities presumably have different
 kinds of housing dynamics than rural areas.
 
 The point cloud tells us very useful information about the relationship
@@ -518,17 +522,21 @@ between the two variables. Specifically, we can tell stories about:
 
 # Part 3: Statistically test data patterns
 
-While visualization is useful, it only *describes* a visual pattern. For
+While visualization is useful, it only *describes* a data pattern. For
 data storytelling to be persuasive, however, we need to present evidence
-that analyzes the pattern and evaluates uncertainty around the analysis.
+that tests the pattern and evaluates uncertainty around the analysis.
 We’ll address this with two related tests: correlation and linear
 regression.
 
 #### Correlation
 
-Correlation tests assess whether the variables are associated with each
-other. The null hypothesis is that the variables are not associated. The
-alternative hypothesis is that they are.
+Correlation tests are used to assess whether two variables are
+associated with each other. Thinking back to the scatterplot, these
+tests are assessing the direction of the point cloud (whether it’s
+positive or negative) and the relatively compactness of the clould (more
+compact clouds indicate more closely related variables). The null
+hypothesis is that the variables are not associated. The alternative
+hypothesis is that they are.
 
 For data with our variables’ structure, we’ll use a test called
 [Pearson’s r correlation
@@ -546,7 +554,7 @@ It will generate a correlation coefficient that ranges from -1 to 1.
   cloud).
 
 ``` r
-# a basic correlation test for new constructoin
+# a basic correlation test for new construction
 cor(x = data$NewHomes_pct, 
     y = data$MedianConRent, 
     method = "pearson", 
@@ -573,7 +581,7 @@ series of extra metrics including:
   that R is more likely to be not 0.
 
 - p-value for that t-test, which gives a level of statistical confidence
-  (e.g.,“x is correlated with y, at the 99% level of confidence”)
+  (e.g.,“x is correlated with y, at a 99% level of confidence”)
 
 - a confidence interval, stating that we are certain the actual value of
   R is between these values at a given level of confidence (e.g., “we
@@ -628,7 +636,8 @@ Based on these tests, we can say that:
   coefficient is larger than that for new construction.
 
 - We are confident the variables are correlated with a 99.9% level of
-  significance based on the p-value.
+  significance based on the p-value (which is itself based on the
+  t-value).
 
 - We are 95% confident that the actual correlation is somewhere between
   the first and second values presented in those lines on the summary.
@@ -636,9 +645,9 @@ Based on these tests, we can say that:
 #### Simple linear regression
 
 A correlation test will tell us that two variables are associated. But,
-famously, *correlation does not equal causation* (for some hilarious
-illustrations of this point, see Tyler Vigin’s [*Spurious
-Correlations*](https://www.tylervigen.com/spurious-correlations) blog).
+famously, *correlation does not equal causation*. For some hilarious
+illustrations of this point, see Tyler Vigen’s [*Spurious
+Correlations*](https://www.tylervigen.com/spurious-correlations) blog.
 
 To get closer to measuring causal patterns, we can use regression models
 to ask if one variable *predicts* the behavior of the other variable.
@@ -656,12 +665,10 @@ where:
 - y is the predicted value of y,
 
 - 𝛂 is the intercept of the line. It can be interpreted as the value we
-  would expect to see for y if x is 0.
+  would expect to see for y when the value of x is 0.
 
-- 𝛃 is the slope of the line. It can be interpreted as how we predict y
-  to change if x increased by one unit.
-
-- 
+- 𝛃 is the slope of the line. It can be interpreted as how much we
+  predict y to change if x increases by one unit.
 
 ``` r
 # define a regression model for new construction
@@ -789,7 +796,7 @@ ggplot(data = data,
     ## Warning: Removed 15 rows containing missing values or values outside the scale range
     ## (`geom_point()`).
 
-![](visualize-social-patterns-census-api_files/figure-gfm/unnamed-chunk-21-1.png)<!-- -->
+![](visualize-social-patterns-census-api_files/figure-gfm/unnamed-chunk-23-1.png)<!-- -->
 
 ``` r
 # create a scatterplot for recent movers
@@ -800,7 +807,7 @@ ggplot(data = data, aes(x = NewComers_pct, y = MedianConRent)) +
               color = "orange"
               ) +
   labs(
-    title = "Does migration relate to median rent?", 
+    title = "Does in-migration relate to median rent?", 
     y = "Median Contract Rent ($)", 
     x = "Recently Moved In (%)", 
     size = "Total Housing Units"
@@ -817,19 +824,27 @@ ggplot(data = data, aes(x = NewComers_pct, y = MedianConRent)) +
     ## Warning: Removed 15 rows containing missing values or values outside the scale range
     ## (`geom_point()`).
 
-![](visualize-social-patterns-census-api_files/figure-gfm/unnamed-chunk-22-1.png)<!-- -->
+![](visualize-social-patterns-census-api_files/figure-gfm/unnamed-chunk-24-1.png)<!-- -->
 
 # Conclusion
 
-To sum up, then, we found evidence that:
+To sum up, our goals for the workshop were to:
 
-1)  Housing supply is positively associated with median rent. This
-    suggests that developers are building in pricier markets – which
-    could be great! But, the evidence at hand is not sufficient to show
-    whether that new construction is alleviating median rent costs.
-
-2)  Housing demand is also positively associated with median rent, and
-    has a stronger relationship to it than the supply factor we tested.
-    This suggests that demand factors are important too, so policy
-    makers should be careful to not only focus on increasing housing
-    supply.
+1.  Query American Community Survey data from the Census API. We did
+    this using tools from the `tidycensus` library including
+    `load_variables()` to view Census metadata and `get_acs()` to build
+    and submit an API query.
+2.  Visualize patterns in the data using choropleth maps and
+    scatterplots. We did this using the `ggplot2` library, which applies
+    a ‘grammar of graphics’ approach to construct data visualizations.
+    The key elements of our visualizations happened in how we used the
+    `aes()` parameter to define x and y variables for the plot space
+    (for the maps x = longitude and y = latitude, for the scatterplots,
+    x = our predictor variables and y = median rent).
+3.  Analyze whether those patterns are statistically significant using
+    correlation and simple linear regression. We tested both using ‘base
+    R’ functions – functions available as part of the core R language,
+    not as an additional library. We used `cor.test()` to test whether
+    the x and y variables were related to each other. Then we used
+    `lm()` to define a simple linear regression model to test whether
+    the x variable predicts behavior in the y variable.
