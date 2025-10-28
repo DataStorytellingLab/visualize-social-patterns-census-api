@@ -90,7 +90,6 @@ variablelist <- load_variables(year= 2023, dataset = "acs5")
 
 You now have a data frame called `variablelist` under the Environment tab on the top right of your screen. You can click on it to open and see the structure of what we downloaded. This will list each census variable code, a variable name, and information on the sampling structure and finest scale at which data are available.
 
-![](images/clipboard-1057856700.png)
 
 #### Querying the API
 
