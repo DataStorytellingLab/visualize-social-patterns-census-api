@@ -63,7 +63,7 @@ We'll start by setting up an API call. To get started, you need to obtain a free
 
 ```{r setup, echo=FALSE}
 # set your API key
-census_api_key("paste your key here")
+census_api_key("your key here")
 ```
 
 #### **Data products**
