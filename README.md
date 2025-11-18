@@ -30,7 +30,6 @@ After installation, download the code version of this workflow: [`visualize-soci
 
 ## Further reading
 - Walker, Kyle (2023) _Analyzing US Census Data: Methods, Maps, and Models in R_, CRC Press (open access at https://walker-data.com/census-r/)
-- Walker, Kyle (2025) _tidycensus_ documentation, https://walker-data.com/tidycensus/
 - Wickham, Hadley (2025) _ggplot2: Elegant Graphics for Data Analysis_, Springer (open access at https://ggplot2-book.org/preface-3e.html)
 <br>
 <br>
