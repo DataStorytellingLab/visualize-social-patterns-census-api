@@ -20,6 +20,7 @@ To see the full scope of the this workshop, you can check out the markdown versi
 - Sign up for a Census API key at [this link](https://api.census.gov/data/key_signup.html)
 - Download the code version of this workflow: [`visualize-social-patterns-census-api.rmd`](visualize-social-patterns-census-api.Rmd). (go to the page, click the download button on the top right)
 - Open the `.rmd` in RStudio (from the top left menu bar: File -> Open File)
+
 RMD is a notebook format for use in R. It works similar to other kinds of notebooks (e.g. Jupyter notebooks for Python) in that the file combines code, terminal output, and narrative media such as text and images. You can replicate the workflow step by step using the code chunks in the notebook. To run each chunk, either click the green ‘Run Current Chunk’ button or put your cursor in the code block and hit either `Cntrl + Shift + Enter` (for a PC) or `Cmd + Shift + Enter` (for a Mac). 
 <br>
 
