@@ -1,7 +1,7 @@
 ---
 title: "Interpreting Social Patterns with Census Data"
 author: "John Lauermann, School of Information, Pratt Institute"
-date: "Last updated: October 2025"
+date: "Last updated: November 2025"
 output: github_document
 ---
 
@@ -90,7 +90,6 @@ variablelist <- load_variables(year= 2023, dataset = "acs5")
 
 You now have a data frame called `variablelist` under the Environment tab on the top right of your screen. You can click on it to open and see the structure of what we downloaded. This will list each census variable code, a variable name, and information on the sampling structure and finest scale at which data are available.
 
-
 #### Querying the API
 
 Once you know the identifier codes for the variable(s) you want, we can configure an API call. Remember that Census/ACS data come packaged in numerous geographic scales, each identified with nesting FIPS codes.
@@ -110,14 +109,9 @@ Here is a list of [geography options](https://walker-data.com/tidycensus/article
 variables <- c(MedianConRent = "B25058_001",
                HouseUnits_sum = "B25002_001",
                HouseUnits_built2020orlater = "B25034_002",
-               HouseUnits_built2010to2019 = "B25034_003",
                OccupiedHouseUnits_sum = "B25038_001",
                Owner_MovedIn_after2021 = "B25038_003",
-               Owner_MovedIn_2018to2020 = "B25038_004",
-               Owner_MovedIn_2010to2017 = "B25038_005",
-               Renter_MovedIn_after2021 = "B25038_010",
-               Renter_MovedIn_2018to2020 = "B25038_011",
-               Renter_MovedIn_2010to2017 = "B25038_012"
+               Renter_MovedIn_after2021 = "B25038_010"
                )
 ```
 
@@ -147,12 +141,10 @@ Finally, we need to do a bit of data processing to get the data into a shape tha
 # use dplyr tools to clean the data
 data <- data %>%
   rename_with(~ gsub("E$", "", .x), .cols = everything()) %>%
-  mutate(NewHomes_sum =  HouseUnits_built2010to2019 + HouseUnits_built2020orlater,
-         NewHomes_pct =  NewHomes_sum / HouseUnits_sum * 100,
-         NewComers_sum = Owner_MovedIn_after2021 + Owner_MovedIn_2018to2020 + 
-           Owner_MovedIn_2010to2017+ Renter_MovedIn_after2021 +
-           Renter_MovedIn_2018to2020 + Renter_MovedIn_2010to2017,
-         NewComers_pct = NewComers_sum / OccupiedHouseUnits_sum * 100)
+  mutate(
+    NewHomes_pct =  (HouseUnits_built2020orlater / HouseUnits_sum) * 100,
+    NewComers_pct = (Owner_MovedIn_after2021+ Renter_MovedIn_after2021) /
+      OccupiedHouseUnits_sum * 100)
 ```
 
 ```{r}
@@ -168,9 +160,9 @@ To visualize the data, we'll use a library called `ggplot2`. It is based on a st
 
 You build graphics by adding these layers, with a + for each additional layer:
 
--   **ggplot**() defines the plot layer itself, based on the data you want to use
+-   **ggplot**() defines the plot layer itself, based on the **data** you want to use
 
--   **aes** defines the aesthetic mapping of a layer, connecting variables to elements of the plot
+-   **aes** defines the aesthetic mapping of a layer, connecting variables to visual elements of the plot
 
 -   **geom** adds geometric layers onto the plot, from a library of potential data viz types
 
@@ -225,7 +217,7 @@ ggplot(data = lower48) +
                        name = "% of Total House Units") +  
   labs(
     title = "Supply Factors",
-    subtitle = "New construction as a share of housing market, 2010-2023",
+    subtitle = "New construction as a share of housing market, 2020-2023",
     caption = "Source: ACS 5 Year Estimates"  
   ) + 
   theme_minimal()  
@@ -241,13 +233,96 @@ ggplot(data = lower48) +
                        name = "% of Occupied House Units") + 
   labs(
     title = "Demand Factors",
-    subtitle = "Residents who recently moved into their home, 2010-2023",
+    subtitle = "Residents who recently moved into their home, 2020-2023",
     caption = "Source: ACS 5 Year Estimates" 
   ) + 
   theme_minimal()  
 ```
 
-#### Scatterplot
+But what about local housing markets? To get a more granular picture, we could submit a new query to the Census API for finer scale data. I'll explore census tracts in NYC.
+
+```{r}
+# query API again, for relevant counties in New York state
+data_NYC <- get_acs(
+                geography = "tract",     # census tracts
+                state = "New York",       
+                county = c("Bronx", "Kings", 
+                           "New York", "Queens", "Richmond"), 
+                variables = variables,   # variables previously defined
+                output = "wide",         # row = observation, column = variable
+                year = 2023,             # most recent year
+                geometry = TRUE          # include spatial boundary data   
+                )        
+```
+
+```{r}
+# and do the same data cleaning as before
+data_NYC <- data_NYC %>%
+  rename_with(~ gsub("E$", "", .x), .cols = everything()) %>%
+  mutate(
+    NewHomes_pct =  (HouseUnits_built2020orlater / HouseUnits_sum) * 100,
+    NewComers_pct = (Owner_MovedIn_after2021+ Renter_MovedIn_after2021) /
+      OccupiedHouseUnits_sum * 100)
+```
+
+```{r}
+# and calculate some descriptive statistics just to verify it worked
+mean(na.omit(data_NYC$MedianConRent))
+mean(na.omit(data_NYC$NewHomes_pct))
+mean(na.omit(data_NYC$NewComers_pct))
+```
+
+Now we can do the same mapping procedure as before. But because the overall geographic scope of `data_nyc` is different than the national map of counties, the map space will readjust itself.
+
+```{r}
+# now map median rent
+ggplot(data = data_NYC) +  # defines the plot space
+  geom_sf(aes(fill = MedianConRent), color = NA) +  # viz type = map
+  coord_sf(crs = "EPSG:32618") +   # a relevant map projection for the region
+  scale_fill_distiller(palette = "Reds", # define color fill
+                       direction = 1,  # ramp from light to dark
+                       name = "Rent ($)"  # label the legend
+                       ) +  
+  labs(          
+    title = "Median Contract Rent by Census Tract, 2023", # add text
+    caption = "Source: ACS 5 Year Estimates"
+  ) + 
+  theme_minimal()  # choose a theme
+```
+
+```{r}
+# now map new home construction
+ggplot(data = data_NYC) + 
+  geom_sf(aes(fill = NewHomes_pct), color = NA) +  # Changed the variable
+  coord_sf(crs = "EPSG:32618") +   
+  scale_fill_distiller(palette = "Greens", 
+                       direction = 1, 
+                       name = "% of Total House Units") +  
+  labs(
+    title = "Supply Factors",
+    subtitle = "New construction as a share of housing market, 2020-2023",
+    caption = "Source: ACS 5 Year Estimates"  
+  ) + 
+  theme_minimal()  
+```
+
+```{r}
+# and map newcomers rates
+ggplot(data = data_NYC) +  
+  geom_sf(aes(fill = NewComers_pct), color = NA) +  
+  coord_sf(crs = "EPSG:32618") +   
+  scale_fill_distiller(palette = "Purples", 
+                       direction = 1, 
+                       name = "% of Occupied House Units") + 
+  labs(
+    title = "Demand Factors",
+    subtitle = "Residents who recently moved into their home, 2020-2023",
+    caption = "Source: ACS 5 Year Estimates" 
+  ) + 
+  theme_minimal()  
+```
+
+#### Scatterplots
 
 Visually evaluating the maps, it looks like there might be some association between the two variables. But other kinds of data visualizations may be more effective for understanding any potential pattern. We'll create a scatterplot, a visualization technique that plots one variable against the other, so you can see the overall pattern.
 
@@ -261,9 +336,9 @@ ggplot(data = data,   # define the data space
              alpha = .5) +  # transparency
    scale_size_continuous(labels = scales::comma) +
   labs(
-    title = "Does new construction relate to median rent?", 
+    title = "Does new construction relate to median rent?",
     y = "Median Contract Rent ($)", 
-    x = "New Homes (% of All Units)", 
+    x = "New Homes (%)", 
     size = "Total Housing Units"
   )
 ```
@@ -295,7 +370,7 @@ The point cloud tells us very useful information about the relationship between 
 
 # Part 3: Statistically test data patterns
 
-While visualization is useful, it only *describes* a data pattern. For data storytelling to be persuasive, however, we need to present evidence that tests the pattern and evaluates uncertainty around the analysis. We'll address this with two related tests: correlation and linear regression.
+While visualization is useful, it only *describes* a data pattern. For data storytelling to be persuasive, however, we need to present evidence that tests the significance of the pattern and evaluates uncertainty around the analysis. We'll address this with two related tests: correlation and linear regression.
 
 #### Correlation
 
@@ -310,62 +385,64 @@ For data with our variables' structure, we'll use a test called [Pearson's r cor
 -   The relative magnitude of the coefficient indicates the strength of correlation (the relative compactness or dispersion of the point cloud).
 
 ```{r}
-# a basic correlation test for new construction
-cor(x = data$NewHomes_pct, 
-    y = data$MedianConRent, 
-    method = "pearson", 
-    use = "complete.obs")
+# correlation between rent and new construction
+cor.test(x = data$NewHomes_pct,   # x variable
+         y = data$MedianConRent,  # y variables
+         method = "pearson",      # correlation method
+         use = "complete.obs")    # exclude rows with null values
 ```
 
 ```{r}
-# a basic correlation test for vacancy
-cor(x = data$NewComers_pct, 
-    y = data$MedianConRent, 
-    method = "pearson", 
-    use = "complete.obs")
-```
-
-But we also need to understand whether the Pearson's r value is statistically 'significant'. To that, we'll run a test that generate a series of extra metrics including:
-
--   a t-test, which tests whether R is 0 or not 0. Larger values indicate that R is more likely to be not 0.
-
--   p-value for that t-test, which gives a level of statistical confidence (e.g.,"x is correlated with y, at a 99% level of confidence")
-
--   a confidence interval, stating that we are certain the actual value of R is between these values at a given level of confidence (e.g., "we are 95% certain the true value of R is between \_\_ and \_\_")
-
-```{r}
-# full test metrics for new construction
-cor.test(x = data$NewHomes_pct, 
-         y = data$MedianConRent, 
-         method = "pearson", 
-         use = "complete.obs")
-```
-
-```{r}
-# full test metrics for recent movers
+# correlation between rent and recent movers
 cor.test(x = data$NewComers_pct, 
          y = data$MedianConRent, 
          method = "pearson", 
          use = "complete.obs")
 ```
 
-Based on these tests, we can say that:
+We also need to understand whether the Pearson's r value is statistically 'significant'. To do that, we need to interpret other metrics from these tests including:
 
--   Variables are positively correlated to median rent since the coefficients are positive.
+-   a t-test, which evaluates whether R is 0 or not 0. Larger values of t indicate that the correlation is more likely to be not 0.
+
+-   p-value for that t-test, which gives a level of statistical confidence (e.g.,"x is correlated with y, at a 95% level of confidence")
+
+-   a confidence interval, stating that we are certain the actual value of R is between these values at a given level of confidence (e.g., "we are 95% certain the true value of R is between \_\_ and \_\_")
+
+And we can do the same analysis for our NYC data, stored as a dataframe called `data_NYC`.
+
+```{r}
+# correlation between rent and new construction
+cor.test(x = data_NYC$NewHomes_pct,   # I just changed the data name
+         y = data_NYC$MedianConRent, 
+         method = "pearson",     
+         use = "complete.obs")    
+```
+
+```{r}
+# correlation between rent and recent movers
+cor.test(x = data_NYC$NewComers_pct, 
+         y = data_NYC$MedianConRent, 
+         method = "pearson", 
+         use = "complete.obs")
+```
+
+Based on these tests, we can say that:
 
 -   The recent movers correlation is more strongly correlated because its coefficient is larger than that for new construction.
 
--   We are confident the variables are correlated with a 99.9% level of significance based on the p-value (which is itself based on the t-value).
+-   In NYC, the recent movers correlation is much stronger than the new construction pattern.
 
--   We are 95% confident that the actual correlation is somewhere between the first and second values presented in those lines on the summary.
+-   We are confident these variables are correlated with a 99.9% level of significance based on the p-value.
 
-#### Simple linear regression
+-   We are 95% confident that the actual correlations are somewhere between the first and second values presented in the confidence intervals.
+
+#### Linear models
 
 A correlation test will tell us that two variables are associated. But, famously, *correlation does not equal causation*. For some hilarious illustrations of this point, see Tyler Vigen's [*Spurious Correlations*](https://www.tylervigen.com/spurious-correlations) blog.
 
-To get closer to measuring causal patterns, we can use regression models to ask if one variable *predicts* the behavior of the other variable. The basic version of this is 'simple' [linear regression](https://statsthinking21.github.io/statsthinking21-core-site/fitting-models.html), which fits a line through the point cloud of your scatterplot in the most efficient manner possible.
+To get closer to measuring causal patterns, we can use linear regression models to ask if one variable *predicts* the behavior of the other variable. The basic version of this is 'simple' [linear regression](https://statsthinking21.github.io/statsthinking21-core-site/fitting-models.html), which fits a line through the point cloud of your scatterplot in the most efficient manner possible.
 
-The model is a simple algebraic line:
+The model is ane algebraic line:
 
 y = 𝛂 + 𝛃(x)
 
@@ -379,37 +456,15 @@ where:
 
 ```{r}
 # define a regression model for new construction
-lm(formula = MedianConRent ~ NewHomes_sum, data = data)
+lm(formula = MedianConRent ~ NewHomes_pct, data = data)
 ```
 
 ```{r}
 # define a regression model for recent movers
-lm(formula = MedianConRent ~ NewComers_sum, data = data)
+lm(formula = MedianConRent ~ NewComers_pct, data = data)
 ```
 
-We also want to evaluate the overall performance of the models. This will give us some additional metrics including:
-
--   whether the beta coefficient is statistically significant, and at what level (the t value and p value next to the coefficient estimates)
-
--   the R-squared, which measures the proportion of the behavior of y that is explained by the model
-
-```{r}
-# save the model for new construction
-supply_model <- lm(formula = MedianConRent ~ NewHomes_pct, data = data)
-
-# view the results
-summary(supply_model)
-```
-
-```{r}
-# save the model for recent movers
-demand_model <- lm(formula = MedianConRent ~ NewComers_pct, data = data)
-
-# view the results
-summary(demand_model)
-```
-
-#### Visualize the model
+#### Visualize the models
 
 Finally, we'll add these model lines to the scatterplots we created before to visualize the overall trend. The `geom_smooth` layer will add a line using the same `y ~ x` formula we used above. It will also add a visualization of the confidence interval, which you can specify using a level parameter.
 
@@ -440,6 +495,46 @@ ggplot(data = data, aes(x = NewComers_pct, y = MedianConRent)) +
               ) +
   labs(
     title = "Does in-migration relate to median rent?", 
+    y = "Median Contract Rent ($)", 
+    x = "Recently Moved In (%)", 
+    size = "Total Housing Units"
+  )
+```
+
+We could do the same thing for NYC-specific data by simply changing the `data =` parameter:
+
+```{r}
+# add model for new housing
+ggplot(data = subset(data_NYC, 
+                     NewHomes_pct > 0 & 
+                       !is.na(NewHomes_pct) & 
+                       !is.na(MedianConRent)),   
+       aes(x = NewHomes_pct, y = MedianConRent)) +  
+  geom_point(color = "green", alpha = .5) +  
+  geom_smooth(method = "lm",  # use y ~ x
+              level = 0.95,   # confidence interval around the line
+              color = "red"
+              ) +
+  labs(
+    title = "Does new construction relate to median rent?", 
+    subtitle = "In New York City",
+    y = "Median Contract Rent ($)", 
+    x = "New Homes as percent of market", 
+    size = "Total Housing Units"
+  )
+```
+
+```{r}
+# create a scatterplot for recent movers
+ggplot(data = na.omit(data_NYC), aes(x = NewComers_pct, y = MedianConRent)) +  
+  geom_point(color = "purple", alpha = .5) +  
+  geom_smooth(method = "lm",  # use y ~ x
+              level = 0.95,   # confidence interval around the line
+              color = "orange"
+              ) +
+  labs(
+    title = "Does in-migration relate to median rent?", 
+    subtitle = "In New York City",
     y = "Median Contract Rent ($)", 
     x = "Recently Moved In (%)", 
     size = "Total Housing Units"
