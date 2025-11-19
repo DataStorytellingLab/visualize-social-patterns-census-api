@@ -15,9 +15,13 @@ By the end of the workshop, you should be able to:
 3)	Analyze whether those patterns are statistically significant using correlation and simple linear regression. 
 
 ## How to set up
-To replicate this workshop, follow the instructions in the markdown version of the notebook: [`visualize-social-patterns-census-api.md`](visualize-social-patterns-census-api.md). The first step it describes is to install R and RStudio on your computer. These are free, open source statistical programming tools. R is the language, and RStudio is a commonly-used code editor that helps you draft code, interact with your data, and create data visualizations. To install, follow this link, which will automatically find the most recent versions of R and RStudio for your operating system. 
+To see the full scope of the this workshop, you can check out the markdown version of the notebook: [`visualize-social-patterns-census-api.md`](visualize-social-patterns-census-api.md). Initial set up steps include:
+- Install R and RStudio on your computer with [this link](https://posit.co/download/rstudio-desktop/)
+- Sign up for a Census API key at [this link](https://api.census.gov/data/key_signup.html)
+- Download the code version of this workflow: [`visualize-social-patterns-census-api.rmd`](visualize-social-patterns-census-api.Rmd). (go to the page, click the download button on the top right)
+- Open the `.rmd` in RStudio (from the top left menu bar: File -> Open File)
 
-After installation, download the code version of this workflow: [`visualize-social-patterns-census-api.rmd`](visualize-social-patterns-census-api.Rmd). Then open it in RStudio. `.rmd` is a notebook format for use in R. It works similar to other kinds of notebooks (e.g. Jupyter notebooks for Python) in that the file combines code, terminal output, and narrative media such as text and images. You can replicate the workflow step by step using the code chunks in the notebook. To run each chunk, either click the green ‘Run Current Chunk’ button or put your cursor in the code block and hit either `Cntrl + Shift + Enter` (for a PC) or `Cmd + Shift + Enter` (for a Mac). 
+RMD is a notebook format for use in R. It works similar to other kinds of notebooks (e.g. Jupyter notebooks for Python) in that the file combines code, terminal output, and narrative media such as text and images. You can replicate the workflow step by step using the code chunks in the notebook. To run each chunk, either click the green ‘Run Current Chunk’ button or put your cursor in the code block and hit either `Cntrl + Shift + Enter` (for a PC) or `Cmd + Shift + Enter` (for a Mac). 
 <br>
 
 ## Basic workflow
@@ -30,7 +34,6 @@ After installation, download the code version of this workflow: [`visualize-soci
 
 ## Further reading
 - Walker, Kyle (2023) _Analyzing US Census Data: Methods, Maps, and Models in R_, CRC Press (open access at https://walker-data.com/census-r/)
-- Walker, Kyle (2025) _tidycensus_ documentation, https://walker-data.com/tidycensus/
 - Wickham, Hadley (2025) _ggplot2: Elegant Graphics for Data Analysis_, Springer (open access at https://ggplot2-book.org/preface-3e.html)
 <br>
 <br>
