@@ -37,10 +37,11 @@ We'll start by loading the necessary packages for this workflow. In R, a package
 
 ```{r}
 # verify whether you need these packages, and install if so
-if (!require(dplyr)) install.packages("dplyr")
-if (!require(ggplot2)) install.packages("ggplot2")
-if (!require(stringr)) install.packages("stringr")
-if (!require(tidycensus)) install.packages("tidycensus")
+if (!require(dplyr)) install.packages("dplyr", dependencies = TRUE)
+if (!require(ggplot2)) install.packages("ggplot2", dependencies = TRUE)
+if (!require(stringr)) install.packages("stringr", dependencies = TRUE)
+if (!require(tidycensus)) install.packages("tidycensus", dependencies = TRUE)
+if (!require(tmap)) install.packages("tmap", dependencies = TRUE)
 ```
 
 ```{r}
@@ -49,6 +50,7 @@ library(dplyr)      # for managing data tables
 library(ggplot2)    # for data visualization
 library(stringr)    # for filtering string columns
 library(tidycensus) # for using the Census API
+library(tmap)       # for custom mapping
 ```
 
 # Task 1: Explore and query Census data
@@ -197,8 +199,8 @@ ggplot(data = lower48) +  # defines the plot space
   coord_sf(crs = "ESRI:102010") +   # a relevant map projection for the region
   scale_fill_distiller(palette = "Reds", # define color fill
                        direction = 1,  # ramp from light to dark
-                       name = "Rent ($)"  # label the legend
-                       ) +  
+                       name = "Rent ($)",  # label the legend
+                       na.value = "gray90") + # color for nulls 
   labs(          
     title = "Median Contract Rent by County, 2023", # add text
     caption = "Source: ACS 5 Year Estimates"
@@ -214,7 +216,8 @@ ggplot(data = lower48) +
   coord_sf(crs = "ESRI:102010") +   
   scale_fill_distiller(palette = "Greens", 
                        direction = 1, 
-                       name = "% of Total House Units") +  
+                       name = "% of Total House Units",
+                       na.value = "gray90") +  
   labs(
     title = "Supply Factors",
     subtitle = "New construction as a share of housing market, 2020-2023",
@@ -224,17 +227,18 @@ ggplot(data = lower48) +
 ```
 
 ```{r}
-# and map newcomers rates
-ggplot(data = lower48) +  
-  geom_sf(aes(fill = NewComers_pct), color = NA) +  
-  coord_sf(crs = "ESRI:102010") +   #
+# now map new home construction
+ggplot(data = lower48) + 
+  geom_sf(aes(fill = NewHomes_pct), color = NA) +  # Changed the variable
+  coord_sf(crs = "ESRI:102010") +   
   scale_fill_distiller(palette = "Purples", 
                        direction = 1, 
-                       name = "% of Occupied House Units") + 
+                       name = "% of Total House Units",
+                       na.value = "gray90") +  
   labs(
     title = "Demand Factors",
     subtitle = "Residents who recently moved into their home, 2020-2023",
-    caption = "Source: ACS 5 Year Estimates" 
+    caption = "Source: ACS 5 Year Estimates"  
   ) + 
   theme_minimal()  
 ```
@@ -242,12 +246,11 @@ ggplot(data = lower48) +
 But what about local housing markets? To get a more granular picture, we could submit a new query to the Census API for finer scale data. I'll explore census tracts in NYC.
 
 ```{r}
-# query API again, for relevant counties in New York state
+# query API again, for all census tracts within one borough
 data_NYC <- get_acs(
                 geography = "tract",     # census tracts
-                state = "New York",       
-                county = c("Bronx", "Kings", 
-                           "New York", "Queens", "Richmond"), 
+                state = "New York",      
+                county = "Kings", 
                 variables = variables,   # variables previously defined
                 output = "wide",         # row = observation, column = variable
                 year = 2023,             # most recent year
@@ -275,51 +278,56 @@ mean(na.omit(data_NYC$NewComers_pct))
 Now we can do the same mapping procedure as before. But because the overall geographic scope of `data_nyc` is different than the national map of counties, the map space will readjust itself.
 
 ```{r}
-# now map median rent
-ggplot(data = data_NYC) +  # defines the plot space
-  geom_sf(aes(fill = MedianConRent), color = NA) +  # viz type = map
-  coord_sf(crs = "EPSG:32618") +   # a relevant map projection for the region
-  scale_fill_distiller(palette = "Reds", # define color fill
-                       direction = 1,  # ramp from light to dark
-                       name = "Rent ($)"  # label the legend
-                       ) +  
-  labs(          
-    title = "Median Contract Rent by Census Tract, 2023", # add text
-    caption = "Source: ACS 5 Year Estimates"
-  ) + 
-  theme_minimal()  # choose a theme
-```
-
-```{r}
-# now map new home construction
+# median rent for one borough
 ggplot(data = data_NYC) + 
-  geom_sf(aes(fill = NewHomes_pct), color = NA) +  # Changed the variable
+  geom_sf(aes(fill = MedianConRent), color = NA) +  # Changed the variable
   coord_sf(crs = "EPSG:32618") +   
-  scale_fill_distiller(palette = "Greens", 
+  scale_fill_distiller(palette = "Reds", 
                        direction = 1, 
-                       name = "% of Total House Units") +  
+                       name = "Rent ($)",
+                       na.value = "gray90") +  
   labs(
-    title = "Supply Factors",
-    subtitle = "New construction as a share of housing market, 2020-2023",
+    title = "Median Contract Rent",
+    subtitle = "By census tract in Brooklyn, 2020-2023",
     caption = "Source: ACS 5 Year Estimates"  
   ) + 
-  theme_minimal()  
+  theme_minimal() 
+```
+
+For the last few maps, I'll switch to a library called `tmap` because it allows more control over how we classify data values into color ramps. Since there are a bunch of census tracts in NYC with no new construction, we need to use a different kind of color ramp to pull out the visual distinction along a smaller range of possible values.
+
+`tmap` uses the same basic 'grammar of graphics' logic that we've seen in `ggplot2`. The primary differences are simply in what various visual layers are called (e.g. `tm_layout` instead of `labs` to add labels to the layout).
+
+```{r}
+# switch over to a library called tmap for the last few maps
+tm_shape(shp = data_NYC) + 
+  tm_polygons(fill = "NewHomes_pct",
+              style = "jenks",
+              palette = "Greens",
+              border.alpha = 0,
+              colorNA = "gray90",
+              title = "% of Total \nHousing Units", 
+              title.size = .7) + 
+  tm_layout(
+    title = "New Construction \n2020-2023",
+    title.size = .9,
+    title.position = c("left", "top"))
 ```
 
 ```{r}
-# and map newcomers rates
-ggplot(data = data_NYC) +  
-  geom_sf(aes(fill = NewComers_pct), color = NA) +  
-  coord_sf(crs = "EPSG:32618") +   
-  scale_fill_distiller(palette = "Purples", 
-                       direction = 1, 
-                       name = "% of Occupied House Units") + 
-  labs(
-    title = "Demand Factors",
-    subtitle = "Residents who recently moved into their home, 2020-2023",
-    caption = "Source: ACS 5 Year Estimates" 
-  ) + 
-  theme_minimal()  
+# see new construction
+tm_shape(shp = data_NYC) + 
+  tm_polygons(fill = "NewComers_pct",
+              style = "jenks",
+              palette = "Purples",
+              border.alpha = 0,
+              colorNA = "gray90",
+              title = "% of Occupied \nHousing Units", 
+              title.size = .7) + 
+  tm_layout(
+    title = "Recent Movers\n2020-2023",
+    title.size = .9,
+    title.position = c("left", "top"))
 ```
 
 #### Scatterplots
@@ -517,7 +525,7 @@ ggplot(data = subset(data_NYC,
               ) +
   labs(
     title = "Does new construction relate to median rent?", 
-    subtitle = "In New York City",
+    subtitle = "In Brooklyn",
     y = "Median Contract Rent ($)", 
     x = "New Homes as percent of market", 
     size = "Total Housing Units"
@@ -534,7 +542,7 @@ ggplot(data = na.omit(data_NYC), aes(x = NewComers_pct, y = MedianConRent)) +
               ) +
   labs(
     title = "Does in-migration relate to median rent?", 
-    subtitle = "In New York City",
+    subtitle = "In Brooklyn",
     y = "Median Contract Rent ($)", 
     x = "Recently Moved In (%)", 
     size = "Total Housing Units"
