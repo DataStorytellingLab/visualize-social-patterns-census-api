@@ -327,7 +327,7 @@ ggplot(data = data_NYC,   # define the data space
 
 ```{r}
 # create a scatterplot for recent movers
-ggplot(data = data,   # define the data space
+ggplot(data = data_NYC,   # define the data space
        aes(x = NewComers_pct,  # x variable
            y = MedianConRent, # y variable
            size = OccupiedHouseUnits_sum)) +  
