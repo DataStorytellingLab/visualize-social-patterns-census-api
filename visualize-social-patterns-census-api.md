@@ -406,11 +406,11 @@ pressing housing affordability problem.
 # histogram of rent
 ggplot(data = data, aes(x = MedianConRent)) +  
   geom_histogram(binwidth = 50, fill = "red",color = "gray50") + 
-  geom_vline(aes(xintercept = 1742),   ## adding a line to show Brooklyn rent
+  geom_vline(aes(xintercept = 1657),   ## adding a line to show Brooklyn rent
              color = "blue",
              linetype = "dashed",
              size = .75) +
-  geom_text(aes(x = 1950,     ## and labeling the line
+  geom_text(aes(x = 1900,     ## and labeling the line
                 label = "Brooklyn", 
                 y = 300), 
             color = "blue", 
@@ -431,7 +431,7 @@ ggplot(data = data, aes(x = MedianConRent)) +
     ## Call `lifecycle::last_lifecycle_warnings()` to see where this warning was
     ## generated.
 
-    ## Warning in geom_text(aes(x = 1950, label = "Brooklyn", y = 300), color = "blue", : All aesthetics have length 1, but the data has 3222 rows.
+    ## Warning in geom_text(aes(x = 1900, label = "Brooklyn", y = 300), color = "blue", : All aesthetics have length 1, but the data has 3222 rows.
     ## ℹ Please consider using `annotate()` or provide this layer with data containing
     ##   a single row.
 
@@ -585,7 +585,7 @@ ggplot(data = data_NYC,   # define the data space
 
 ``` r
 # create a scatterplot for recent movers
-ggplot(data = data,   # define the data space
+ggplot(data = data_NYC,   # define the data space
        aes(x = NewComers_pct,  # x variable
            y = MedianConRent, # y variable
            size = OccupiedHouseUnits_sum)) +  
@@ -601,7 +601,7 @@ ggplot(data = data,   # define the data space
   )
 ```
 
-    ## Warning: Removed 15 rows containing missing values or values outside the scale range
+    ## Warning: Removed 35 rows containing missing values or values outside the scale range
     ## (`geom_point()`).
 
 ![](visualize-social-patterns-census-api_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->

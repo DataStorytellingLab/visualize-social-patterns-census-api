@@ -203,11 +203,11 @@ The shape of the histogram provides useful storytelling information. We can see 
 # histogram of rent
 ggplot(data = data, aes(x = MedianConRent)) +  
   geom_histogram(binwidth = 50, fill = "red",color = "gray50") + 
-  geom_vline(aes(xintercept = 1742),   ## adding a line to show Brooklyn rent
+  geom_vline(aes(xintercept = 1657),   ## adding a line to show Brooklyn rent
              color = "blue",
              linetype = "dashed",
              size = .75) +
-  geom_text(aes(x = 1950,     ## and labeling the line
+  geom_text(aes(x = 1900,     ## and labeling the line
                 label = "Brooklyn", 
                 y = 300), 
             color = "blue", 
