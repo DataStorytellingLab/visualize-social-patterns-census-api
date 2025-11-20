@@ -15,13 +15,15 @@ By the end of the workshop, you should be able to:
 3)	Analyze whether those patterns are statistically significant using correlation and simple linear regression. 
 
 ## How to set up
-To see the full scope of the this workshop, you can check out the markdown version of the notebook: [`visualize-social-patterns-census-api.md`](visualize-social-patterns-census-api.md). Initial set up steps include:
-- Install R and RStudio on your computer with [this link](https://posit.co/download/rstudio-desktop/)
+Initial set up steps include:
 - Sign up for a Census API key at [this link](https://api.census.gov/data/key_signup.html)
+- Install R and RStudio on your computer with [this link](https://posit.co/download/rstudio-desktop/)
 - Download the code version of this workflow: [`visualize-social-patterns-census-api.rmd`](visualize-social-patterns-census-api.Rmd). (go to the page, click the download button on the top right)
 - Open the `.rmd` notebook in RStudio (from the top left menu bar: File -> Open File)
 
 You can replicate the workflow step by step using the code chunks in the notebook. To run each chunk, either click the green ‘Run Current Chunk’ button or put your cursor in the code block and hit either `Cntrl + Shift + Enter` (for a PC) or `Cmd + Shift + Enter` (for a Mac). 
+
+To see the full scope of the this workshop, you can check out the markdown version of the notebook: [`visualize-social-patterns-census-api.md`](visualize-social-patterns-census-api.md).
 <br>
 
 ## Basic workflow
