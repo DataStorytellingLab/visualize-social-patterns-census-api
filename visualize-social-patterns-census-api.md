@@ -131,7 +131,6 @@ library(dplyr)      # for managing data tables
 library(ggplot2)    # for data visualization
 library(stringr)    # for filtering string columns
 library(tidycensus) # for using the Census API
-library(tmap)       # for custom mapping
 ```
 
 # Task 1: Explore and query Census data
@@ -369,11 +368,83 @@ layer:
   themes](https://ggplot2.tidyverse.org/reference/ggtheme.html) to style
   the graphic
 
+#### Histogram
+
+We’ll start by exploring the overall distribution of the rent data with
+a histogram. This will visualize the frequency of counties by their rent
+levels.
+
+``` r
+# histogram of rent
+ggplot(data = data, aes(x = MedianConRent)) +  # defines the plot space
+  geom_histogram(       # defines what kind of visualization 
+    binwidth = 50,      # each bar represents this increment
+    fill = "red",       # bar color
+    color = "gray50") + # lorder color
+  labs(          
+    title = "Median Contract Rent by County, 2023", # add text
+    caption = "Source: ACS 5 Year Estimates",
+    x = "Rent ($)",
+    y  = "Counties"
+  ) + 
+  theme_minimal()  # choose a theme
+```
+
+    ## Warning: Removed 15 rows containing non-finite outside the scale range
+    ## (`stat_bin()`).
+
+![](visualize-social-patterns-census-api_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+
+The shape of the histogram provides useful storytelling information. We
+can see that the data have a generally normal (or ‘bell curve’)
+distribution with most counties hovering around the national average (of
+\$726). But there are also some very extreme outliers on the right side
+of the histogram. Those outliers would be the places with the most
+pressing housing affordability problem.
+
+``` r
+# histogram of rent
+ggplot(data = data, aes(x = MedianConRent)) +  
+  geom_histogram(binwidth = 50, fill = "red",color = "gray50") + 
+  geom_vline(aes(xintercept = 1742),   ## adding a line to show Brooklyn rent
+             color = "blue",
+             linetype = "dashed",
+             size = .75) +
+  geom_text(aes(x = 1950,     ## and labeling the line
+                label = "Brooklyn", 
+                y = 300), 
+            color = "blue", 
+            angle = 0, 
+            vjust = 1.5) + 
+  labs(          
+    title = "Median Contract Rent by County, 2023", # add text
+    caption = "Source: ACS 5 Year Estimates",
+    x = "Rent ($)",
+    y  = "Counties"
+  ) + 
+  theme_minimal()  # choose a theme
+```
+
+    ## Warning: Using `size` aesthetic for lines was deprecated in ggplot2 3.4.0.
+    ## ℹ Please use `linewidth` instead.
+    ## This warning is displayed once every 8 hours.
+    ## Call `lifecycle::last_lifecycle_warnings()` to see where this warning was
+    ## generated.
+
+    ## Warning in geom_text(aes(x = 1950, label = "Brooklyn", y = 300), color = "blue", : All aesthetics have length 1, but the data has 3222 rows.
+    ## ℹ Please consider using `annotate()` or provide this layer with data containing
+    ##   a single row.
+
+    ## Warning: Removed 15 rows containing non-finite outside the scale range
+    ## (`stat_bin()`).
+
+![](visualize-social-patterns-census-api_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
+
 #### Choropleth maps
 
-We’ll start by mapping the geographic pattern of our variables. This
-will identify regions of high/low values in each of the variables. To do
-this, we’ll create a set of [choropleth
+So where are these outliers? To find them, we can map the geographic
+pattern of our variables. This will identify regions of high/low values
+in each of the variables. To do this, we’ll create a set of [choropleth
 maps](https://www.axismaps.com/guide/choropleth). This is a common data
 viz type that uses the color of map objects to visualize their data
 values.
@@ -404,76 +475,113 @@ ggplot(data = lower48) +  # defines the plot space
   theme_minimal()  # choose a theme
 ```
 
-![](visualize-social-patterns-census-api_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
-
-``` r
-# now map new home construction
-ggplot(data = lower48) + 
-  geom_sf(aes(fill = NewHomes_pct), color = NA) +  # Changed the variable
-  coord_sf(crs = "ESRI:102010") +   
-  scale_fill_distiller(palette = "Greens", 
-                       direction = 1, 
-                       name = "% of Total House Units",
-                       na.value = "gray90") +  
-  labs(
-    title = "Supply Factors",
-    subtitle = "New construction as a share of housing market, 2020-2023",
-    caption = "Source: ACS 5 Year Estimates"  
-  ) + 
-  theme_minimal()  
-```
-
-![](visualize-social-patterns-census-api_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
-
-``` r
-# now map recent movers
-ggplot(data = lower48) + 
-  geom_sf(aes(fill = NewComers_pct), color = NA) +  # Changed the variable
-  coord_sf(crs = "ESRI:102010") +   
-  scale_fill_distiller(palette = "Purples", 
-                       direction = 1, 
-                       name = "% of Total House Units",
-                       na.value = "gray90") +  
-  labs(
-    title = "Demand Factors",
-    subtitle = "Residents who recently moved into their home, 2020-2023",
-    caption = "Source: ACS 5 Year Estimates"  
-  ) + 
-  theme_minimal()  
-```
-
 ![](visualize-social-patterns-census-api_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
+
+As you can see, the outliers with very high rent are primarily urban
+counties in coastal states. The counties in New York are certainly among
+them. So we’ll zoom into data focused one county: Brooklyn (aka Kings
+County).
+
+``` r
+# set up an API query
+data_NYC <- get_acs(geography = "tract",    # census tracts
+                state = "New York",     # now we specify a geographic search
+                county = "Kings",
+                variables = variables,   # all variables defined in the list above
+                output = "wide",         # row = observation, column = variable
+                year = 2023,             # most recent year
+                geometry = TRUE         # include spatial boundary data   
+                ) 
+```
+
+    ## Getting data from the 2019-2023 5-year ACS
+
+    ## Downloading feature geometry from the Census website.  To cache shapefiles for use in future sessions, set `options(tigris_use_cache = TRUE)`.
+
+    ##   |                                                                              |                                                                      |   0%  |                                                                              |=                                                                     |   1%  |                                                                              |=                                                                     |   2%  |                                                                              |==                                                                    |   3%  |                                                                              |===                                                                   |   4%  |                                                                              |====                                                                  |   5%  |                                                                              |====                                                                  |   6%  |                                                                              |=====                                                                 |   7%  |                                                                              |=====                                                                 |   8%  |                                                                              |======                                                                |   8%  |                                                                              |=======                                                               |   9%  |                                                                              |=======                                                               |  10%  |                                                                              |========                                                              |  11%  |                                                                              |========                                                              |  12%  |                                                                              |=========                                                             |  13%  |                                                                              |==========                                                            |  14%  |                                                                              |===========                                                           |  15%  |                                                                              |===========                                                           |  16%  |                                                                              |============                                                          |  17%  |                                                                              |============                                                          |  18%  |                                                                              |=============                                                         |  19%  |                                                                              |==============                                                        |  20%  |                                                                              |===============                                                       |  21%  |                                                                              |===============                                                       |  22%  |                                                                              |================                                                      |  23%  |                                                                              |=================                                                     |  24%  |                                                                              |=================                                                     |  25%  |                                                                              |==================                                                    |  25%  |                                                                              |==================                                                    |  26%  |                                                                              |===================                                                   |  27%  |                                                                              |====================                                                  |  28%  |                                                                              |====================                                                  |  29%  |                                                                              |=====================                                                 |  30%  |                                                                              |=====================                                                 |  31%  |                                                                              |======================                                                |  31%  |                                                                              |=======================                                               |  32%  |                                                                              |=======================                                               |  33%  |                                                                              |========================                                              |  34%  |                                                                              |========================                                              |  35%  |                                                                              |=========================                                             |  36%  |                                                                              |==========================                                            |  36%  |                                                                              |==========================                                            |  37%  |                                                                              |===========================                                           |  38%  |                                                                              |===========================                                           |  39%  |                                                                              |============================                                          |  40%  |                                                                              |=============================                                         |  41%  |                                                                              |=============================                                         |  42%  |                                                                              |==============================                                        |  42%  |                                                                              |==============================                                        |  43%  |                                                                              |===============================                                       |  44%  |                                                                              |===============================                                       |  45%  |                                                                              |================================                                      |  46%  |                                                                              |=================================                                     |  47%  |                                                                              |=================================                                     |  48%  |                                                                              |==================================                                    |  48%  |                                                                              |==================================                                    |  49%  |                                                                              |===================================                                   |  50%  |                                                                              |====================================                                  |  51%  |                                                                              |====================================                                  |  52%  |                                                                              |=====================================                                 |  53%  |                                                                              |======================================                                |  54%  |                                                                              |=======================================                               |  55%  |                                                                              |=======================================                               |  56%  |                                                                              |========================================                              |  57%  |                                                                              |========================================                              |  58%  |                                                                              |=========================================                             |  59%  |                                                                              |==========================================                            |  59%  |                                                                              |==========================================                            |  60%  |                                                                              |===========================================                           |  61%  |                                                                              |===========================================                           |  62%  |                                                                              |============================================                          |  63%  |                                                                              |=============================================                         |  64%  |                                                                              |==============================================                        |  65%  |                                                                              |==============================================                        |  66%  |                                                                              |===============================================                       |  67%  |                                                                              |================================================                      |  68%  |                                                                              |================================================                      |  69%  |                                                                              |=================================================                     |  70%  |                                                                              |==================================================                    |  71%  |                                                                              |==================================================                    |  72%  |                                                                              |===================================================                   |  73%  |                                                                              |====================================================                  |  74%  |                                                                              |====================================================                  |  75%  |                                                                              |=====================================================                 |  76%  |                                                                              |======================================================                |  77%  |                                                                              |=======================================================               |  78%  |                                                                              |=======================================================               |  79%  |                                                                              |========================================================              |  80%  |                                                                              |========================================================              |  81%  |                                                                              |=========================================================             |  81%  |                                                                              |==========================================================            |  82%  |                                                                              |==========================================================            |  83%  |                                                                              |===========================================================           |  84%  |                                                                              |===========================================================           |  85%  |                                                                              |============================================================          |  86%  |                                                                              |=============================================================         |  87%  |                                                                              |==============================================================        |  88%  |                                                                              |==============================================================        |  89%  |                                                                              |===============================================================       |  90%  |                                                                              |================================================================      |  91%  |                                                                              |================================================================      |  92%  |                                                                              |=================================================================     |  93%  |                                                                              |==================================================================    |  94%  |                                                                              |===================================================================   |  95%  |                                                                              |===================================================================   |  96%  |                                                                              |====================================================================  |  97%  |                                                                              |====================================================================  |  98%  |                                                                              |===================================================================== |  98%  |                                                                              |======================================================================|  99%  |                                                                              |======================================================================| 100%
+
+Now we have a new data frame in the environment, called `data_NYC`. It
+has the same variables as the national data, but formatted instead for
+census tracts in Brooklyn.
+
+``` r
+# do the same cleaning as before
+data_NYC <- data_NYC %>%
+  rename_with(~ gsub("E$", "", .x), .cols = everything()) %>%
+  mutate(
+    NewHomes_pct =  (HouseUnits_built2020orlater / HouseUnits_sum) * 100,
+    NewComers_pct = (Owner_MovedIn_after2021+ Renter_MovedIn_after2021) /
+      OccupiedHouseUnits_sum * 100)
+```
+
+``` r
+# and calculate descriptive statistics just to verify it worked
+mean(na.omit(data_NYC$MedianConRent))
+```
+
+    ## [1] 1752.045
+
+``` r
+mean(na.omit(data_NYC$NewHomes_pct))
+```
+
+    ## [1] 0.5010963
+
+``` r
+mean(na.omit(data_NYC$NewComers_pct))
+```
+
+    ## [1] 9.035121
+
+``` r
+# median rent for one borough
+ggplot(data = data_NYC) +
+  geom_sf(aes(fill = MedianConRent), color = NA) +  # Changed the variable
+  coord_sf(crs = "EPSG:32618") +  
+  scale_fill_distiller(palette = "Reds",
+                       direction = 1,
+                       name = "Rent ($)",
+                       na.value = "gray90") +  
+  labs(
+    title = "Median Contract Rent",
+    subtitle = "By census tract in Brooklyn, 2020-2023",
+    caption = "Source: ACS 5 Year Estimates"  
+  ) +
+  theme_minimal()
+```
+
+![](visualize-social-patterns-census-api_files/figure-gfm/unnamed-chunk-16-1.png)<!-- -->
 
 #### Scatterplots
 
-Visually evaluating the maps, it looks like there might be some
-association between the variables. But other kinds of data
-visualizations may be more effective for understanding any potential
-pattern. We’ll create a scatterplot, a visualization technique that
-plots one variable against the other, so you can see the overall
-pattern.
+So what might explain the housing affordability challenge in Brooklyn?
+Is it linked to supply factors like the availability of new homes, or
+demand factors like the prevalence of recent moves? We’ll create some
+scatterplot, a visualization technique that plots one variable against
+the other, so you can see the overall pattern.
 
 ``` r
 # create a scatterplot for new housing
-ggplot(data = data,   # define the data space
+ggplot(data = data_NYC,   # define the data space
        aes(x = NewHomes_pct,  # x variable
-           y = MedianConRent, # y variable
-           size = HouseUnits_sum)) +   # size dots by total population, for context
+           y = MedianConRent,  # y variable
+           size = HouseUnits_sum)) +   # size of bubble, just for contet
   geom_point(color = "green", # color as name or RBG vector
              alpha = .5) +  # transparency
-   scale_size_continuous(labels = scales::comma) +
+  scale_size_continuous(labels = scales::comma) +
   labs(
     title = "Does new construction relate to median rent?",
+    subtitle = "In Brooklyn, 2020-2023",
     y = "Median Contract Rent ($)", 
     x = "New Homes (%)", 
     size = "Total Housing Units"
   )
 ```
 
-    ## Warning: Removed 15 rows containing missing values or values outside the scale range
+    ## Warning: Removed 35 rows containing missing values or values outside the scale range
     ## (`geom_point()`).
 
-![](visualize-social-patterns-census-api_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
+![](visualize-social-patterns-census-api_files/figure-gfm/unnamed-chunk-17-1.png)<!-- -->
 
 ``` r
 # create a scatterplot for recent movers
@@ -483,9 +591,10 @@ ggplot(data = data,   # define the data space
            size = OccupiedHouseUnits_sum)) +  
   geom_point(color = "purple", # color as name or RBG vector
              alpha = .5) +  # transparency
-   scale_size_continuous(labels = scales::comma) +
+  scale_size_continuous(labels = scales::comma) +
   labs(
     title = "Does migration relate to median rent?", 
+    subtitle = "In Brooklyn, 2020-2023",
     y = "Median Contract Rent ($)", 
     x = "Recently Moved In (%)", 
     size = "Occupied Housing Units"
@@ -495,7 +604,7 @@ ggplot(data = data,   # define the data space
     ## Warning: Removed 15 rows containing missing values or values outside the scale range
     ## (`geom_point()`).
 
-![](visualize-social-patterns-census-api_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
+![](visualize-social-patterns-census-api_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->
 
 On these plots, each dot represents a county. The dots’ position
 represent their values of the x and y variables. The size of each dot
@@ -549,8 +658,8 @@ It will generate a correlation coefficient that ranges from -1 to 1.
 
 ``` r
 # correlation between rent and new construction 
-cor.test(x = data$NewHomes_pct,   # x variable          
-         y = data$MedianConRent,  # y variables          
+cor.test(x = data_NYC$NewHomes_pct,   # x variable          
+         y = data_NYC$MedianConRent,  # y variables          
          method = "pearson",      # correlation method          
          use = "complete.obs")    # exclude rows with null values
 ```
@@ -558,22 +667,23 @@ cor.test(x = data$NewHomes_pct,   # x variable
     ## 
     ##  Pearson's product-moment correlation
     ## 
-    ## data:  data$NewHomes_pct and data$MedianConRent
-    ## t = 21.604, df = 3205, p-value < 2.2e-16
+    ## data:  data_NYC$NewHomes_pct and data_NYC$MedianConRent
+    ## t = 2.683, df = 768, p-value = 0.007453
     ## alternative hypothesis: true correlation is not equal to 0
     ## 95 percent confidence interval:
-    ##  0.3259423 0.3863763
+    ##  0.02588829 0.16588719
     ## sample estimates:
-    ##       cor 
-    ## 0.3565322
+    ##        cor 
+    ## 0.09636432
 
-Interpreting this, rent and home construction are positively correlated,
-and that correlation is statistically significant at the 99.9% level.
+Interpreting this, rent and home construction are positively but only
+weakly correlated, and that correlation is statistically significant at
+the 99% level.
 
 ``` r
 # correlation between rent and recent movers 
-cor.test(x = data$NewComers_pct,           
-         y = data$MedianConRent,          
+cor.test(x = data_NYC$NewComers_pct,           
+         y = data_NYC$MedianConRent,          
          method = "pearson",          
          use = "complete.obs")
 ```
@@ -581,14 +691,14 @@ cor.test(x = data$NewComers_pct,
     ## 
     ##  Pearson's product-moment correlation
     ## 
-    ## data:  data$NewComers_pct and data$MedianConRent
-    ## t = 28.109, df = 3205, p-value < 2.2e-16
+    ## data:  data_NYC$NewComers_pct and data_NYC$MedianConRent
+    ## t = 15.841, df = 768, p-value < 2.2e-16
     ## alternative hypothesis: true correlation is not equal to 0
     ## 95 percent confidence interval:
-    ##  0.4165174 0.4720640
+    ##  0.4410731 0.5477090
     ## sample estimates:
     ##       cor 
-    ## 0.4447182
+    ## 0.4962605
 
 Interpreting this, rent and recent movers are positively correlated, and
 that correlation is statistically significant at the 99.9% level. The
@@ -624,37 +734,37 @@ where:
 
 ``` r
 # define a regression model for new construction
-lm(formula = MedianConRent ~ NewHomes_pct, data = data)
+lm(formula = MedianConRent ~ NewHomes_pct, data = data_NYC)
 ```
 
     ## 
     ## Call:
-    ## lm(formula = MedianConRent ~ NewHomes_pct, data = data)
+    ## lm(formula = MedianConRent ~ NewHomes_pct, data = data_NYC)
     ## 
     ## Coefficients:
     ##  (Intercept)  NewHomes_pct  
-    ##        615.1         129.5
+    ##      1732.14         39.68
 
-Interpreting this: we would expect a baseline rent of \$615 (the
+Interpreting this: we would expect a baseline rent of \$1732 (the
 intercept). For each 1% increase in new housing, we expect rent to
-increase by \$129 (the slope).
+increase by \$40 (the slope).
 
 ``` r
 # define a regression model for recent movers
-lm(formula = MedianConRent ~ NewComers_pct, data = data)
+lm(formula = MedianConRent ~ NewComers_pct, data = data_NYC)
 ```
 
     ## 
     ## Call:
-    ## lm(formula = MedianConRent ~ NewComers_pct, data = data)
+    ## lm(formula = MedianConRent ~ NewComers_pct, data = data_NYC)
     ## 
     ## Coefficients:
     ##   (Intercept)  NewComers_pct  
-    ##        317.62          50.42
+    ##       1365.47          42.52
 
-Interpreting this: we start with a baseline rent of \$317 (the
+Interpreting this: we start with a baseline rent of \$1365 (the
 intercept). For each 1% increase in recent movers, we expect rent to
-increase by \$50 (the slope).
+increase by \$42 (the slope).
 
 #### Visualize the model
 
@@ -666,7 +776,7 @@ level parameter.
 
 ``` r
 # add model for new housing
-ggplot(data = data,   
+ggplot(data = data_NYC,   
        aes(x = NewHomes_pct, y = MedianConRent)) +  
   geom_point(color = "green", alpha = .5) +  
   geom_smooth(method = "lm",  # use y ~ x
@@ -682,17 +792,17 @@ ggplot(data = data,
 
     ## `geom_smooth()` using formula = 'y ~ x'
 
-    ## Warning: Removed 15 rows containing non-finite outside the scale range
+    ## Warning: Removed 35 rows containing non-finite outside the scale range
     ## (`stat_smooth()`).
 
-    ## Warning: Removed 15 rows containing missing values or values outside the scale range
+    ## Warning: Removed 35 rows containing missing values or values outside the scale range
     ## (`geom_point()`).
 
-![](visualize-social-patterns-census-api_files/figure-gfm/unnamed-chunk-19-1.png)<!-- -->
+![](visualize-social-patterns-census-api_files/figure-gfm/unnamed-chunk-23-1.png)<!-- -->
 
 ``` r
 # create a scatterplot for recent movers
-ggplot(data = data, aes(x = NewComers_pct, y = MedianConRent)) +  
+ggplot(data = data_NYC, aes(x = NewComers_pct, y = MedianConRent)) +  
   geom_point(color = "purple", alpha = .5) +  
   geom_smooth(method = "lm",  # use y ~ x
               level = 0.95,   # confidence interval around the line
@@ -707,13 +817,13 @@ ggplot(data = data, aes(x = NewComers_pct, y = MedianConRent)) +
 
     ## `geom_smooth()` using formula = 'y ~ x'
 
-    ## Warning: Removed 15 rows containing non-finite outside the scale range
+    ## Warning: Removed 35 rows containing non-finite outside the scale range
     ## (`stat_smooth()`).
 
-    ## Warning: Removed 15 rows containing missing values or values outside the scale range
+    ## Warning: Removed 35 rows containing missing values or values outside the scale range
     ## (`geom_point()`).
 
-![](visualize-social-patterns-census-api_files/figure-gfm/unnamed-chunk-20-1.png)<!-- -->
+![](visualize-social-patterns-census-api_files/figure-gfm/unnamed-chunk-24-1.png)<!-- -->
 
 # Conclusion
 
@@ -723,13 +833,13 @@ To sum up, our goals for the workshop were to:
     this using tools from the `tidycensus` library including
     `load_variables()` to view Census metadata and `get_acs()` to build
     and submit an API query.
-2.  Visualize patterns in the data using choropleth maps and
-    scatterplots. We did this using the `ggplot2` library, which applies
-    a ‘grammar of graphics’ approach to construct data visualizations.
-    The key elements of our visualizations happened in how we used the
-    `aes()` parameter to define x and y variables for the plot space
-    (for the maps x = longitude and y = latitude, for the scatterplots,
-    x = our predictor variables and y = median rent).
+2.  Visualize patterns in the data using histograms, choropleth maps,
+    and scatterplots. We did this using the `ggplot2` library, which
+    applies a ‘grammar of graphics’ approach to construct data
+    visualizations. The key elements of our visualizations happened in
+    how we used the `aes()` parameter to define x and y variables for
+    the plot space (for the maps x = longitude and y = latitude, for the
+    scatterplots, x = our predictor variables and y = median rent).
 3.  Analyze whether those patterns are statistically significant using
     correlation and simple linear regression. We tested both using ‘base
     R’ functions – functions available as part of the core R language,
